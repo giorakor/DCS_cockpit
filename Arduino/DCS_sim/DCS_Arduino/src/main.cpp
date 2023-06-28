@@ -1,4 +1,4 @@
-
+#include <Arduino.h>
 #include <Servo.h>
 // PWM pins
 #define LeftPWM_pin 3
@@ -35,7 +35,7 @@
 #define left_pos_0 497
 #define right_pos_0 557
 #define PWM_zero 92
-#define max_pwr 50;
+#define max_pwr 50
 
 Servo left_motor;
 Servo right_motor;
@@ -45,14 +45,14 @@ bool auto_mode, man_mode, air_on, mode_up, mode_down, left_PB;
 int man_speed, air_speed, scale, left_pos, right_pos;
 long last_sent_tele;
 
-int left_PWM = 92;
-int right_PWM = 92;
+int left_pct = 0;
+int right_pct = 0;
 
-int pwm_speed;
-
-void setup() {
+void setup()
+{
   Serial.begin(115200);
-  for (int i = 0; i < 37; i++) pinMode(i, INPUT_PULLUP);
+  for (int i = 0; i < 37; i++)
+    pinMode(i, INPUT_PULLUP);
   pinMode(LeftPWM_pin, OUTPUT);
   pinMode(RightPWM_pin, OUTPUT);
   pinMode(air_PWM_pin, OUTPUT);
@@ -69,8 +69,10 @@ void setup() {
   right_motor.attach(RightPWM_pin);
 }
 
-void send_tele() {
-  if (millis() - last_sent_tele > 50) {
+void send_tele()
+{
+  if (millis() - last_sent_tele > 50)
+  {
     Serial.print(" LP: ");
     Serial.print(left_pos);
     Serial.print(" RP: ");
@@ -94,13 +96,17 @@ void send_tele() {
   return;
 }
 
-int limit(int val, int limits) {
-  if (val > limits) val = limits;
-  if (val < -limits) val = -limits;
+int limit(int val, int limits)
+{
+  if (val > limits)
+    val = limits;
+  if (val < -limits)
+    val = -limits;
   return val;
 }
 
-void read_IO() {
+void read_IO()
+{
   LeftLL = 1 - digitalRead(LeftLL_pin);
   LeftUL = 1 - digitalRead(LeftUL_pin);
   man_left = 1 - digitalRead(man_left_pin);
@@ -116,21 +122,26 @@ void read_IO() {
 
   left_pos = analogRead(left_pos_pin) - left_pos_0;
   right_pos = 1023 - analogRead(right_pos_pin) - right_pos_0;
-  man_speed = analogRead(man_speed_pin) - 465;
+  man_speed = limit((analogRead(man_speed_pin) - 465) / 5, 100);
   air_speed = analogRead(air_speed_pin);
   scale = analogRead(scale_pin);
   return;
 }
 
-void operate_motors(int left_percent, int right_percent) {
+void operate_motors(int left_percent, int right_percent)
+{
   int left_PWM, right_PWM;
-  right_percent = limit (right_percent, max_pwr);
-  left_percent = limit (left_percent, max_pwr);
-  
-  if (right_percent > 0 && RightUL) right_percent = 0;
-  if (right_percent < 0 && RightLL) right_percent = 0;
-  if (left_percent > 0 && LeftUL) left_percent = 0;
-  if (left_percent < 0 && LeftLL) left_percent = 0;
+  right_percent = limit(right_percent, max_pwr);
+  left_percent = limit(left_percent, max_pwr);
+
+  if (right_percent > 0 && RightUL)
+    right_percent = 0;
+  if (right_percent < 0 && RightLL)
+    right_percent = 0;
+  if (left_percent > 0 && LeftUL)
+    left_percent = 0;
+  if (left_percent < 0 && LeftLL)
+    left_percent = 0;
 
   left_PWM = PWM_zero + (left_percent * 70) / 100;
   right_PWM = PWM_zero + (right_percent * 70) / 100;
@@ -145,37 +156,47 @@ void operate_LEDs()
   digitalWrite(LED_auto_pin, auto_mode);
 }
 
-void loop() {
+void loop()
+{
   read_IO();
-  if (man_mode) {
-    if (abs(man_speed) < 100) {
-      pwm_speed = stp;
-    } else {
-      if (man_speed > 0) pwm_speed = stp + abs((man_speed - 100) / 10);
-      else pwm_speed = stp - abs((man_speed + 100) / 10);
-    }
-    if (mode_up) {
-      left_PWM = stp;
-      right_PWM = stp;
-      if (man_left) {
-        left_PWM = pwm_speed;
-        right_PWM = pwm_speed;
+  if (man_mode)
+  {
+    left_pct = 0;
+    right_pct = 0;
+    if (man_speed > 20)
+      man_speed -= 20;
+    else if (man_speed < -20)
+      man_speed += 20;
+    else
+      man_speed = 0;
+
+    if (mode_up)
+    {
+      if (man_left)
+      {
+        left_pct = man_speed;
+        right_pct = man_speed;
       }
-      if (man_right) {
-        left_PWM = pwm_speed;
-        right_PWM = stp - (pwm_speed - stp);
+      if (man_right)
+      {
+        left_pct = man_speed;
+        right_pct = -man_speed;
       }
-    } else {
-      if (man_left) left_PWM = pwm_speed;
-      else left_PWM = stp;
-      if (man_right) right_PWM = pwm_speed;
-      else right_PWM = stp;
     }
-  } else {
-    left_PWM = stp;
-    right_PWM = stp;
+    else
+    {
+      if (man_left)
+        left_pct = man_speed;
+      if (man_right)
+        right_pct = man_speed;
+    }
   }
-  operate_motors();
+  else
+  {
+    left_pct = 0;
+    right_pct = 0;
+  }
+  operate_motors(left_pct, right_pct);
   operate_LEDs();
   send_tele();
   delay(1);
