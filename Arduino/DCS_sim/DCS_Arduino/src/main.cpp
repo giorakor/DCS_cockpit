@@ -35,14 +35,14 @@
 #define left_pos_0 497
 #define right_pos_0 557
 #define PWM_zero 92
-#define max_pwr 50
+#define max_pwr 100 // in %
 
 Servo left_motor;
 Servo right_motor;
 
 bool LeftLL, LeftUL, RightLL, RightUL, man_right, man_left;
 bool auto_mode, man_mode, air_on, mode_up, mode_down, left_PB;
-int man_speed, air_speed, scale, left_pos, right_pos;
+int man_speed, air_speed, scale, left_pos, right_pos, man_pos;
 long last_sent_tele;
 
 int left_pct = 0;
@@ -51,7 +51,7 @@ int right_pct = 0;
 void setup()
 {
   Serial.begin(115200);
-  for (int i = 0; i < 37; i++)
+  for (int i = 0; i < 38; i++)
     pinMode(i, INPUT_PULLUP);
   pinMode(LeftPWM_pin, OUTPUT);
   pinMode(RightPWM_pin, OUTPUT);
@@ -73,6 +73,8 @@ void send_tele()
 {
   if (millis() - last_sent_tele > 50)
   {
+    Serial.print(" LPB: ");
+    Serial.print(left_PB);
     Serial.print(" LP: ");
     Serial.print(left_pos);
     Serial.print(" RP: ");
@@ -122,7 +124,8 @@ void read_IO()
 
   left_pos = analogRead(left_pos_pin) - left_pos_0;
   right_pos = 1023 - analogRead(right_pos_pin) - right_pos_0;
-  man_speed = limit((analogRead(man_speed_pin) - 465) / 5, 100);
+  man_speed = limit((analogRead(man_speed_pin) - 465) / 5, 100); // -100 to 100
+  man_pos = limit((analogRead(man_speed_pin) - 465), 250);
   air_speed = analogRead(air_speed_pin);
   scale = analogRead(scale_pin);
   return;
@@ -183,12 +186,30 @@ void loop()
         right_pct = -man_speed;
       }
     }
+    else if (mode_down)
+    {
+      if (man_left)
+      {
+        left_pct = limit((man_pos - left_pos) / 2, 60);
+        right_pct = limit((man_pos - right_pos) / 2, 60);
+      }
+      if (man_right)
+      {
+        left_pct = limit((man_pos - left_pos) / 2, 60);
+        right_pct = limit((-man_pos - right_pos) / 2, 60);
+      }
+    }
     else
     {
       if (man_left)
         left_pct = man_speed;
       if (man_right)
         right_pct = man_speed;
+    }
+    if (left_PB)
+    {
+      left_pct = limit(-left_pos, 40);
+      right_pct = limit(-right_pos, 40);
     }
   }
   else
