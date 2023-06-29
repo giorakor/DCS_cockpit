@@ -34,8 +34,15 @@
 // calibrations
 #define left_pos_0 497
 #define right_pos_0 557
-#define PWM_zero 92
-#define max_pwr 100 // in %
+#define left_min_pos -220
+#define left_max_pos 320
+#define right_min_pos -220
+#define right_max_pos 320
+#define KS 4
+#define KP 5 // X10  5 means 0.5
+
+#define PWM_zero 90
+#define max_pwr 90 // in %
 
 Servo left_motor;
 Servo right_motor;
@@ -80,14 +87,14 @@ void send_tele()
     Serial.print(" RP: ");
     Serial.print(right_pos);
     Serial.print(" spd: ");
-    Serial.print(man_speed);
-    Serial.print(" air: ");
-    Serial.print(air_speed);
-    Serial.print(" scale: ");
-    Serial.print(scale);
-    Serial.print(" lft, rgt: ");
-    Serial.print(man_left);
-    Serial.print(man_right);
+    // Serial.print(man_speed);
+    // Serial.print(" air: ");
+    // Serial.print(air_speed);
+    // Serial.print(" scale: ");
+    // Serial.print(scale);
+    // Serial.print(" lft, rgt: ");
+    // Serial.print(man_left);
+    // Serial.print(man_right);
     Serial.print(" lft LL UL, rgt LL UL: ");
     Serial.print(LeftLL);
     Serial.print(LeftUL);
@@ -105,6 +112,24 @@ int limit(int val, int limits)
   if (val < -limits)
     val = -limits;
   return val;
+}
+
+int range(int val, int lower, int upper)
+{
+  if (val > upper)
+    val = upper;
+  if (val < lower)
+    val = lower;
+  return val;
+}
+
+int sign(int val)
+{
+  if (val > 0)
+    return 1;
+  if (val < 0)
+    return -1;
+  return 0;
 }
 
 void read_IO()
@@ -125,7 +150,7 @@ void read_IO()
   left_pos = analogRead(left_pos_pin) - left_pos_0;
   right_pos = 1023 - analogRead(right_pos_pin) - right_pos_0;
   man_speed = limit((analogRead(man_speed_pin) - 465) / 5, 100); // -100 to 100
-  man_pos = limit((analogRead(man_speed_pin) - 465), 250);
+  man_pos = limit((analogRead(man_speed_pin) - 465), 400);
   air_speed = analogRead(air_speed_pin);
   scale = analogRead(scale_pin);
   return;
@@ -151,6 +176,15 @@ void operate_motors(int left_percent, int right_percent)
 
   left_motor.write(left_PWM);
   right_motor.write(right_PWM);
+}
+
+void send_motors_top_pos(int left_W, int right_W)
+
+{
+  int left_err = range(left_W, left_min_pos, left_max_pos) - left_pos;
+  int right_err = range(right_W, right_min_pos, right_max_pos) - right_pos;
+  left_pct = left_err * KP / 10 + KS * sign(left_err);
+  right_pct = right_err * KP / 10 + KS * sign(right_err);
 }
 
 void operate_LEDs()
@@ -189,15 +223,9 @@ void loop()
     else if (mode_down)
     {
       if (man_left)
-      {
-        left_pct = limit((man_pos - left_pos) / 2, 60);
-        right_pct = limit((man_pos - right_pos) / 2, 60);
-      }
+        send_motors_top_pos(man_pos, man_pos);
       if (man_right)
-      {
-        left_pct = limit((man_pos - left_pos) / 2, 60);
-        right_pct = limit((-man_pos - right_pos) / 2, 60);
-      }
+        send_motors_top_pos(man_pos, -man_pos);
     }
     else
     {
@@ -206,10 +234,10 @@ void loop()
       if (man_right)
         right_pct = man_speed;
     }
-    if (left_PB)
+    if (left_PB) // home
     {
-      left_pct = limit(-left_pos, 40);
-      right_pct = limit(-right_pos, 40);
+      left_pct = limit(-left_pos * KP / 10 + KS * sign(left_pos), 40);
+      right_pct = limit(-right_pos * KP / 10 + KS * sign(right_pos), 40);
     }
   }
   else
