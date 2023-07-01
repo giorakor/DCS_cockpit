@@ -49,8 +49,8 @@ bool auto_mode, man_mode, air_on, mode_up, mode_down, left_PB;
 int man_speed, air_speed, scale, left_pos, right_pos, man_pos, air_PWM;
 long last_sent_tele, last_run;
 
-int left_pct = 0;
-int right_pct = 0;
+int left_percent_power = 0;
+int right_percent_power = 0;
 
 int Target_left = 0;
 int Target_right = 0;
@@ -114,7 +114,7 @@ void ParseCommand(int ComPort)
   }
 }
 
-void CheckSerial0()
+void read_data_from_serial()
 {
   while (Serial.available())
   {
@@ -202,7 +202,7 @@ void read_IO()
   man_speed = limit((analogRead(man_speed_pin) - 465) / 5, 100); // -100 to 100
   man_pos = limit((analogRead(man_speed_pin) - 465), 400);
   air_speed = range((analogRead(air_speed_pin) - 23) / 10, 0, 100); // 0.... 100
-  scale = analogRead(scale_pin);
+  scale = range(analogRead(scale_pin) / 50, 0, 20);                 // 0 ...20
   return;
 }
 
@@ -233,8 +233,8 @@ void send_motors_to_pos(int left_W, int right_W)
 {
   int left_err = range(left_W, left_min_pos, left_max_pos) - left_pos;
   int right_err = range(right_W, right_min_pos, right_max_pos) - right_pos;
-  left_pct = left_err * KP / 10 + KS * sign(left_err);
-  right_pct = right_err * KP / 10 + KS * sign(right_err);
+  left_percent_power = left_err * KP / 10 + KS * sign(left_err);
+  right_percent_power = right_err * KP / 10 + KS * sign(right_err);
 }
 
 void operate_LEDs()
@@ -257,27 +257,27 @@ void manual_mode()
   else if (mode_down)
   {
     if (man_left)
-      left_pct = speed;
+      left_percent_power = speed;
     if (man_right)
-      right_pct = speed;
+      right_percent_power = speed;
   }
   else
   {
     if (man_left)
     {
-      left_pct = speed;
-      right_pct = speed;
+      left_percent_power = speed;
+      right_percent_power = speed;
     }
     if (man_right)
     {
-      left_pct = speed;
-      right_pct = -speed;
+      left_percent_power = speed;
+      right_percent_power = -speed;
     }
   }
   if (left_PB) // home
   {
-    left_pct = limit(-left_pos * KP / 10 + KS * sign(left_pos), 40);
-    right_pct = limit(-right_pos * KP / 10 + KS * sign(right_pos), 40);
+    left_percent_power = limit(-left_pos * KP / 10 + KS * sign(left_pos), 40);
+    right_percent_power = limit(-right_pos * KP / 10 + KS * sign(right_pos), 40);
   }
   if (!air_on || millis() < 1000)
     air_speed = 0;
@@ -316,17 +316,17 @@ void loop()
   }
   last_run = millis();
 
-  left_pct = 0;
-  right_pct = 0;
+  left_percent_power = 0;
+  right_percent_power = 0;
   read_IO();
   if (man_mode)
     manual_mode();
   else if (auto_mode) // auto mode
   {
-    CheckSerial0();
-    send_motors_to_pos(Target_left, Target_right);
+    read_data_from_serial(); // fills target_left and target_right
+    send_motors_to_pos(Target_left * scale / 20, Target_right * scale / 20);
   }
-  operate_motors(left_pct, right_pct);
+  operate_motors(left_percent_power, right_percent_power);
   operate_LEDs();
   send_tele();
   delay(1);
