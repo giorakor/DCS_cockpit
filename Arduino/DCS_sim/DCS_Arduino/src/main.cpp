@@ -32,10 +32,10 @@
 #define left_max_pos 315
 #define right_min_pos -280
 #define right_max_pos 315
-#define KS 5
+#define KS 12
 #define KP 5 // X10  5 means 0.5
 #define PWM_zero 90
-#define max_pwr 50 // in %
+#define max_pwr 60 // in %
 
 #define COM0 0         // hardware Serial Port
 #define START_BYTE '[' // Start Byte for serial commands
@@ -45,10 +45,10 @@ Servo right_motor;
 Servo air_motor;
 
 bool LeftLL, LeftUL, RightLL, RightUL, man_right, man_left;
-bool auto_mode, man_mode, air_on, mode_up, mode_down, left_PB;
+bool auto_mode, man_mode, air_on, mode_up, mode_down, left_PB, enable_motion = 0, home_in_progress = 0;
 int man_speed, air_speed, scale, left_pos, right_pos, man_pos, air_PWM;
 long last_sent_tele, last_run;
-
+int in_home_counter = 0;
 int left_percent_power = 0;
 int right_percent_power = 0;
 
@@ -111,6 +111,13 @@ void ParseCommand(int ComPort)
   case 'B':
     Target_right = range((RxBuffer[1][ComPort] * 256) + RxBuffer[2][ComPort] - 512, right_min_pos, right_max_pos);
     break;
+  case 'S':
+    enable_motion = 1;
+    break;
+  case 'E':
+    enable_motion = 0;
+    home_in_progress = 1;
+    break;
   }
 }
 
@@ -162,7 +169,10 @@ void send_tele()
     Serial.print(right_pos);
     Serial.print(" AirP: ");
     Serial.print(air_PWM);
-
+    Serial.print(" L%: ");
+    Serial.print(left_percent_power);
+    Serial.print(" R%: ");
+    Serial.print(right_percent_power);
     // Serial.print(" spd: ");
     //  Serial.print(man_speed);
     //  Serial.print(" air: ");
@@ -243,7 +253,7 @@ void operate_LEDs()
   digitalWrite(LED_auto_pin, auto_mode);
 }
 
-void manual_mode()
+void operate_manual_mode()
 {
   int speed = dead_band(man_speed, 20);
 
@@ -285,6 +295,26 @@ void manual_mode()
   air_motor.write(air_PWM);
 }
 
+void operate_auto_mode()
+{
+  read_data_from_serial(); // fills target_left and target_right
+  if (enable_motion)
+    send_motors_to_pos(Target_left * scale / 20, Target_right * scale / 20);
+  else if (home_in_progress)
+  {
+    send_motors_to_pos(0, 0);
+    if (abs(left_pos) < 25 && abs(right_pos) < 25)
+      in_home_counter++;
+    else
+      in_home_counter = 0;
+    if (in_home_counter > 500)
+    {
+      home_in_progress = 0;
+      enable_motion = 0;
+    }
+  }
+}
+
 void setup()
 {
   Serial.begin(500000); // 115200
@@ -320,14 +350,12 @@ void loop()
   right_percent_power = 0;
   read_IO();
   if (man_mode)
-    manual_mode();
+    operate_manual_mode();
   else if (auto_mode) // auto mode
   {
-    read_data_from_serial(); // fills target_left and target_right
-    send_motors_to_pos(Target_left * scale / 20, Target_right * scale / 20);
+    operate_auto_mode();
   }
   operate_motors(left_percent_power, right_percent_power);
   operate_LEDs();
   send_tele();
-  delay(1);
 }
