@@ -32,11 +32,14 @@
 #define left_max_pos 315
 #define right_min_pos -280
 #define right_max_pos 315
-#define KS 4
+#define KS 5
 #define KP 5 // X10  5 means 0.5
 #define PWM_zero 90
-#define max_pwr 40 // in %
+#define max_pwr 50 // in %
 
+#define COM0 0         // hardware Serial Port
+#define START_BYTE '[' // Start Byte for serial commands
+#define END_BYTE ']'   // End Byte for serial commands
 Servo left_motor;
 Servo right_motor;
 Servo air_motor;
@@ -44,63 +47,19 @@ Servo air_motor;
 bool LeftLL, LeftUL, RightLL, RightUL, man_right, man_left;
 bool auto_mode, man_mode, air_on, mode_up, mode_down, left_PB;
 int man_speed, air_speed, scale, left_pos, right_pos, man_pos, air_PWM;
-long last_sent_tele;
+long last_sent_tele, last_run;
 
 int left_pct = 0;
 int right_pct = 0;
 
-void setup()
-{
-  Serial.begin(115200);
-  for (int i = 0; i < 38; i++)
-    pinMode(i, INPUT_PULLUP);
-  pinMode(LeftPWM_pin, OUTPUT);
-  pinMode(RightPWM_pin, OUTPUT);
-  pinMode(air_PWM_pin, OUTPUT);
-  pinMode(LED_auto_pin, OUTPUT);
-  pinMode(LED_man_pin, OUTPUT);
+int Target_left = 0;
+int Target_right = 0;
 
-  digitalWrite(LeftPWM_pin, LOW);
-  digitalWrite(RightPWM_pin, LOW);
-  digitalWrite(air_PWM_pin, LOW);
-  digitalWrite(LED_auto_pin, LOW);
-  digitalWrite(LED_man_pin, LOW);
-
-  left_motor.attach(LeftPWM_pin);
-  right_motor.attach(RightPWM_pin);
-  air_motor.attach(air_PWM_pin);
-  air_motor.write(10);
-}
-
-void send_tele()
-{
-  if (millis() - last_sent_tele > 50)
-  {
-    Serial.print(" LP: ");
-    Serial.print(left_pos);
-    Serial.print(" RP: ");
-    Serial.print(right_pos);
-    Serial.print(" AirP: ");
-    Serial.print(air_PWM);
-
-    // Serial.print(" spd: ");
-    //  Serial.print(man_speed);
-    //  Serial.print(" air: ");
-    //  Serial.print(air_speed);
-    //  Serial.print(" scale: ");
-    //  Serial.print(scale);
-    //  Serial.print(" lft, rgt: ");
-    //  Serial.print(man_left);
-    //  Serial.print(man_right);
-    Serial.print(" lft LL UL, rgt LL UL: ");
-    Serial.print(LeftLL);
-    Serial.print(LeftUL);
-    Serial.print(RightLL);
-    Serial.println(RightUL);
-    last_sent_tele = millis();
-  }
-  return;
-}
+unsigned int RxByte[2] = {0};      // Current byte received from each of the two comm ports
+int BufferEnd[2] = {-1};           // Rx Buffer end index for each of the two comm ports
+unsigned int RxBuffer[5][2] = {0}; // 5 byte Rx Command Buffer for each of the two comm ports
+byte errorcount = 0;               // serial receive error detected by invalid packet start/end bytes
+unsigned int CommsTimeout = 0;     // used to reduce motor power if there has been no comms for a while
 
 int limit(int val, int limits)
 {
@@ -138,6 +97,89 @@ int dead_band(int val, int db)
   else
     val = 0;
   return val;
+}
+
+void ParseCommand(int ComPort)
+{
+  CommsTimeout = 0; // reset the comms timeout counter to indicate we are getting packets
+
+  switch (RxBuffer[0][ComPort])
+  {
+  case 'A':
+    Target_left = range((RxBuffer[1][ComPort] * 256) + RxBuffer[2][ComPort] - 512, left_min_pos, left_max_pos);
+    break;
+  case 'B':
+    Target_right = range((RxBuffer[1][ComPort] * 256) + RxBuffer[2][ComPort] - 512, right_min_pos, right_max_pos);
+    break;
+  }
+}
+
+void CheckSerial0()
+{
+  while (Serial.available())
+  {
+    if (BufferEnd[COM0] == -1)
+    {
+      RxByte[COM0] = Serial.read();
+      if (RxByte[COM0] != START_BYTE)
+      {
+        BufferEnd[COM0] = -1;
+        errorcount++;
+      }
+      else
+      {
+        BufferEnd[COM0] = 0;
+      }
+    }
+    else
+    {
+      RxByte[COM0] = Serial.read();
+      RxBuffer[BufferEnd[COM0]][COM0] = RxByte[COM0];
+      BufferEnd[COM0]++;
+      if (BufferEnd[COM0] > 3)
+      {
+        if (RxBuffer[3][COM0] == END_BYTE)
+        {
+          ParseCommand(COM0);
+        }
+        else
+        {
+          errorcount++;
+        }
+        BufferEnd[COM0] = -1;
+      }
+    }
+  }
+}
+
+void send_tele()
+{
+  if (millis() - last_sent_tele > 50)
+  {
+    Serial.print(" LP: ");
+    Serial.print(left_pos);
+    Serial.print(" RP: ");
+    Serial.print(right_pos);
+    Serial.print(" AirP: ");
+    Serial.print(air_PWM);
+
+    // Serial.print(" spd: ");
+    //  Serial.print(man_speed);
+    //  Serial.print(" air: ");
+    //  Serial.print(air_speed);
+    //  Serial.print(" scale: ");
+    //  Serial.print(scale);
+    //  Serial.print(" lft, rgt: ");
+    //  Serial.print(man_left);
+    //  Serial.print(man_right);
+    Serial.print(" lft LL UL, rgt LL UL: ");
+    Serial.print(LeftLL);
+    Serial.print(LeftUL);
+    Serial.print(RightLL);
+    Serial.println(RightUL);
+    last_sent_tele = millis();
+  }
+  return;
 }
 
 void read_IO()
@@ -186,7 +228,7 @@ void operate_motors(int left_percent, int right_percent)
   right_motor.write(right_PWM);
 }
 
-void send_motors_top_pos(int left_W, int right_W)
+void send_motors_to_pos(int left_W, int right_W)
 
 {
   int left_err = range(left_W, left_min_pos, left_max_pos) - left_pos;
@@ -208,9 +250,9 @@ void manual_mode()
   if (mode_up)
   {
     if (man_left)
-      send_motors_top_pos(man_pos, man_pos);
+      send_motors_to_pos(man_pos, man_pos);
     if (man_right)
-      send_motors_top_pos(man_pos, -man_pos);
+      send_motors_to_pos(man_pos, -man_pos);
   }
   else if (mode_down)
   {
@@ -243,8 +285,37 @@ void manual_mode()
   air_motor.write(air_PWM);
 }
 
+void setup()
+{
+  Serial.begin(500000); // 115200
+  for (int i = 0; i < 38; i++)
+    pinMode(i, INPUT_PULLUP);
+  pinMode(LeftPWM_pin, OUTPUT);
+  pinMode(RightPWM_pin, OUTPUT);
+  pinMode(air_PWM_pin, OUTPUT);
+  pinMode(LED_auto_pin, OUTPUT);
+  pinMode(LED_man_pin, OUTPUT);
+
+  digitalWrite(LeftPWM_pin, LOW);
+  digitalWrite(RightPWM_pin, LOW);
+  digitalWrite(air_PWM_pin, LOW);
+  digitalWrite(LED_auto_pin, LOW);
+  digitalWrite(LED_man_pin, LOW);
+
+  left_motor.attach(LeftPWM_pin);
+  right_motor.attach(RightPWM_pin);
+  air_motor.attach(air_PWM_pin);
+  air_motor.write(10);
+}
+
 void loop()
 {
+  while ((millis() - last_run) < 1)
+  {
+    ;
+  }
+  last_run = millis();
+
   left_pct = 0;
   right_pct = 0;
   read_IO();
@@ -252,6 +323,8 @@ void loop()
     manual_mode();
   else if (auto_mode) // auto mode
   {
+    CheckSerial0();
+    send_motors_to_pos(Target_left, Target_right);
   }
   operate_motors(left_pct, right_pct);
   operate_LEDs();
