@@ -33,7 +33,7 @@
 #define right_min_pos -280
 #define right_max_pos 315
 #define KS 12
-#define KP 5 // X10  5 means 0.5
+#define KP 4 // X10  5 means 0.5
 #define PWM_zero 90
 #define max_pwr 60 // in %
 
@@ -44,9 +44,11 @@ Servo left_motor;
 Servo right_motor;
 Servo air_motor;
 
-bool LeftLL, LeftUL, RightLL, RightUL, man_right, man_left;
+float phase;
+
+bool LeftLL, LeftUL, RightLL, RightUL, man_right, man_left, run_demo = 0;
 bool auto_mode, man_mode, air_on, mode_up, mode_down, left_PB, enable_motion = 0, home_in_progress = 0;
-int man_speed, air_speed, scale, left_pos, right_pos, man_pos, air_PWM;
+int man_speed, air_speed, scale, left_pos, right_pos, man_pos, air_PWM, demo_left_wpos, demo_right_wpos;
 long last_sent_tele, last_run;
 int in_home_counter = 0;
 int left_percent_power = 0;
@@ -256,7 +258,6 @@ void operate_LEDs()
 void operate_manual_mode()
 {
   int speed = dead_band(man_speed, 20);
-
   if (mode_up)
   {
     if (man_left)
@@ -293,6 +294,26 @@ void operate_manual_mode()
     air_speed = 0;
   air_PWM = 10 + air_speed * 12 / 10;
   air_motor.write(air_PWM);
+}
+
+void operate_demo_mode()
+{
+  if (man_left)
+    run_demo = 1;
+  if (man_right)
+    run_demo = 0;
+  if (run_demo)
+  {
+    demo_left_wpos = int(sin(phase) * scale * 13);
+    demo_right_wpos = int(sin(phase * 1.2) * scale * 13);
+    phase += 0.00002 * (man_speed + 100);
+    send_motors_to_pos(demo_left_wpos, demo_right_wpos);
+  }
+  if (left_PB) // home
+  {
+    left_percent_power = limit(-left_pos * KP / 10 + KS * sign(left_pos), 40);
+    right_percent_power = limit(-right_pos * KP / 10 + KS * sign(right_pos), 40);
+  }
 }
 
 void operate_auto_mode()
@@ -352,9 +373,10 @@ void loop()
   if (man_mode)
     operate_manual_mode();
   else if (auto_mode) // auto mode
-  {
     operate_auto_mode();
-  }
+  else
+    operate_demo_mode();
+
   operate_motors(left_percent_power, right_percent_power);
   operate_LEDs();
   send_tele();
