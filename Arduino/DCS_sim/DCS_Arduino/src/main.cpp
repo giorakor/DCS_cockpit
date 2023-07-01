@@ -255,6 +255,14 @@ void operate_LEDs()
   digitalWrite(LED_auto_pin, auto_mode);
 }
 
+void operate_air()
+{
+  if (!air_on || millis() < 1000)
+    air_speed = 0;
+  air_PWM = 10 + air_speed;
+  air_motor.write(air_PWM);
+}
+
 void operate_manual_mode()
 {
   int speed = dead_band(man_speed, 20);
@@ -290,10 +298,7 @@ void operate_manual_mode()
     left_percent_power = limit(-left_pos * KP / 10 + KS * sign(left_pos), 40);
     right_percent_power = limit(-right_pos * KP / 10 + KS * sign(right_pos), 40);
   }
-  if (!air_on || millis() < 1000)
-    air_speed = 0;
-  air_PWM = 10 + air_speed * 12 / 10;
-  air_motor.write(air_PWM);
+  operate_air();
 }
 
 void operate_demo_mode()
@@ -308,8 +313,10 @@ void operate_demo_mode()
     demo_right_wpos = int(sin(phase * 1.2) * scale * 13);
     phase += 0.00002 * (man_speed + 100);
     send_motors_to_pos(demo_left_wpos, demo_right_wpos);
+    air_PWM = 30 + (sin(phase/2)+1.0)*20;
+    air_motor.write(air_PWM);
   }
-  if (left_PB) // home
+  else // home
   {
     left_percent_power = limit(-left_pos * KP / 10 + KS * sign(left_pos), 40);
     right_percent_power = limit(-right_pos * KP / 10 + KS * sign(right_pos), 40);
@@ -334,6 +341,7 @@ void operate_auto_mode()
       enable_motion = 0;
     }
   }
+  operate_air();
 }
 
 void setup()
