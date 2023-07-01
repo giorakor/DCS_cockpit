@@ -4,52 +4,46 @@
 #define LeftPWM_pin 3
 #define RightPWM_pin 6
 #define air_PWM_pin 11
-
 // Digital pins
 #define LeftLL_pin 4
 #define LeftUL_pin 5
 #define RightLL_pin 8
 #define RightUL_pin 7
-
 #define man_right_pin 10
 #define man_left_pin 9
-
 #define LED_auto_pin 22
 #define LED_man_pin 24
-
 #define auto_pin 26
 #define man_pin 28
 #define air_on_pin 30
 #define mode_up_pin 34
 #define mode_down_pin 32
 #define left_PB_pin 36
-
 // Analog pins
 #define left_pos_pin 0
 #define right_pos_pin 1
 #define man_speed_pin 2
 #define air_speed_pin 3
 #define scale_pin 4
-
 // calibrations
 #define left_pos_0 497
 #define right_pos_0 557
-#define left_min_pos -220
-#define left_max_pos 320
-#define right_min_pos -220
-#define right_max_pos 320
+#define left_min_pos -280
+#define left_max_pos 315
+#define right_min_pos -280
+#define right_max_pos 315
 #define KS 4
 #define KP 5 // X10  5 means 0.5
-
 #define PWM_zero 90
-#define max_pwr 90 // in %
+#define max_pwr 40 // in %
 
 Servo left_motor;
 Servo right_motor;
+Servo air_motor;
 
 bool LeftLL, LeftUL, RightLL, RightUL, man_right, man_left;
 bool auto_mode, man_mode, air_on, mode_up, mode_down, left_PB;
-int man_speed, air_speed, scale, left_pos, right_pos, man_pos;
+int man_speed, air_speed, scale, left_pos, right_pos, man_pos, air_PWM;
 long last_sent_tele;
 
 int left_pct = 0;
@@ -74,27 +68,30 @@ void setup()
 
   left_motor.attach(LeftPWM_pin);
   right_motor.attach(RightPWM_pin);
+  air_motor.attach(air_PWM_pin);
+  air_motor.write(10);
 }
 
 void send_tele()
 {
   if (millis() - last_sent_tele > 50)
   {
-    Serial.print(" LPB: ");
-    Serial.print(left_PB);
     Serial.print(" LP: ");
     Serial.print(left_pos);
     Serial.print(" RP: ");
     Serial.print(right_pos);
-    Serial.print(" spd: ");
-    // Serial.print(man_speed);
-    // Serial.print(" air: ");
-    // Serial.print(air_speed);
-    // Serial.print(" scale: ");
-    // Serial.print(scale);
-    // Serial.print(" lft, rgt: ");
-    // Serial.print(man_left);
-    // Serial.print(man_right);
+    Serial.print(" AirP: ");
+    Serial.print(air_PWM);
+
+    // Serial.print(" spd: ");
+    //  Serial.print(man_speed);
+    //  Serial.print(" air: ");
+    //  Serial.print(air_speed);
+    //  Serial.print(" scale: ");
+    //  Serial.print(scale);
+    //  Serial.print(" lft, rgt: ");
+    //  Serial.print(man_left);
+    //  Serial.print(man_right);
     Serial.print(" lft LL UL, rgt LL UL: ");
     Serial.print(LeftLL);
     Serial.print(LeftUL);
@@ -132,6 +129,17 @@ int sign(int val)
   return 0;
 }
 
+int dead_band(int val, int db)
+{
+  if (val > db)
+    val -= db;
+  else if (val < -db)
+    val += db;
+  else
+    val = 0;
+  return val;
+}
+
 void read_IO()
 {
   LeftLL = 1 - digitalRead(LeftLL_pin);
@@ -151,7 +159,7 @@ void read_IO()
   right_pos = 1023 - analogRead(right_pos_pin) - right_pos_0;
   man_speed = limit((analogRead(man_speed_pin) - 465) / 5, 100); // -100 to 100
   man_pos = limit((analogRead(man_speed_pin) - 465), 400);
-  air_speed = analogRead(air_speed_pin);
+  air_speed = range((analogRead(air_speed_pin) - 23) / 10, 0, 100); // 0.... 100
   scale = analogRead(scale_pin);
   return;
 }
@@ -171,8 +179,8 @@ void operate_motors(int left_percent, int right_percent)
   if (left_percent < 0 && LeftLL)
     left_percent = 0;
 
-  left_PWM = PWM_zero + (left_percent * 70) / 100;
-  right_PWM = PWM_zero + (right_percent * 70) / 100;
+  left_PWM = PWM_zero + (left_percent * 60) / 100;
+  right_PWM = PWM_zero + (right_percent * 60) / 100;
 
   left_motor.write(left_PWM);
   right_motor.write(right_PWM);
@@ -193,57 +201,57 @@ void operate_LEDs()
   digitalWrite(LED_auto_pin, auto_mode);
 }
 
-void loop()
+void manual_mode()
 {
-  read_IO();
-  if (man_mode)
-  {
-    left_pct = 0;
-    right_pct = 0;
-    if (man_speed > 20)
-      man_speed -= 20;
-    else if (man_speed < -20)
-      man_speed += 20;
-    else
-      man_speed = 0;
+  int speed = dead_band(man_speed, 20);
 
-    if (mode_up)
-    {
-      if (man_left)
-      {
-        left_pct = man_speed;
-        right_pct = man_speed;
-      }
-      if (man_right)
-      {
-        left_pct = man_speed;
-        right_pct = -man_speed;
-      }
-    }
-    else if (mode_down)
-    {
-      if (man_left)
-        send_motors_top_pos(man_pos, man_pos);
-      if (man_right)
-        send_motors_top_pos(man_pos, -man_pos);
-    }
-    else
-    {
-      if (man_left)
-        left_pct = man_speed;
-      if (man_right)
-        right_pct = man_speed;
-    }
-    if (left_PB) // home
-    {
-      left_pct = limit(-left_pos * KP / 10 + KS * sign(left_pos), 40);
-      right_pct = limit(-right_pos * KP / 10 + KS * sign(right_pos), 40);
-    }
+  if (mode_up)
+  {
+    if (man_left)
+      send_motors_top_pos(man_pos, man_pos);
+    if (man_right)
+      send_motors_top_pos(man_pos, -man_pos);
+  }
+  else if (mode_down)
+  {
+    if (man_left)
+      left_pct = speed;
+    if (man_right)
+      right_pct = speed;
   }
   else
   {
-    left_pct = 0;
-    right_pct = 0;
+    if (man_left)
+    {
+      left_pct = speed;
+      right_pct = speed;
+    }
+    if (man_right)
+    {
+      left_pct = speed;
+      right_pct = -speed;
+    }
+  }
+  if (left_PB) // home
+  {
+    left_pct = limit(-left_pos * KP / 10 + KS * sign(left_pos), 40);
+    right_pct = limit(-right_pos * KP / 10 + KS * sign(right_pos), 40);
+  }
+  if (!air_on || millis() < 1000)
+    air_speed = 0;
+  air_PWM = 10 + air_speed * 12 / 10;
+  air_motor.write(air_PWM);
+}
+
+void loop()
+{
+  left_pct = 0;
+  right_pct = 0;
+  read_IO();
+  if (man_mode)
+    manual_mode();
+  else if (auto_mode) // auto mode
+  {
   }
   operate_motors(left_pct, right_pct);
   operate_LEDs();
