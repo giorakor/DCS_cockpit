@@ -19,6 +19,9 @@
 #define mode_up_pin 34
 #define mode_down_pin 32
 #define left_PB_pin 36
+#define LED_red 44
+#define LED_blu 46
+#define LED_grn 45
 // Analog pins
 #define left_pos_pin 0
 #define right_pos_pin 1
@@ -32,7 +35,7 @@
 #define left_max_pos 315
 #define right_min_pos -280
 #define right_max_pos 315
-#define KS 12
+#define KS 4
 #define KP 4 // X10  5 means 0.5
 #define PWM_zero 90
 #define max_pwr 60 // in %
@@ -62,6 +65,9 @@ int BufferEnd[2] = {-1};           // Rx Buffer end index for each of the two co
 unsigned int RxBuffer[5][2] = {0}; // 5 byte Rx Command Buffer for each of the two comm ports
 byte errorcount = 0;               // serial receive error detected by invalid packet start/end bytes
 unsigned int CommsTimeout = 0;     // used to reduce motor power if there has been no comms for a while
+
+long time_turn_on, time_turn_off;
+bool led_on;
 
 int limit(int val, int limits)
 {
@@ -253,6 +259,10 @@ void operate_LEDs()
 {
   digitalWrite(LED_man_pin, man_mode);
   digitalWrite(LED_auto_pin, auto_mode);
+
+  digitalWrite(LED_grn, HIGH);
+  digitalWrite(LED_blu, LOW);
+  digitalWrite(LED_red, HIGH);
 }
 
 void operate_air()
@@ -313,13 +323,13 @@ void operate_demo_mode()
     demo_right_wpos = int(sin(phase * 1.2) * scale * 13);
     phase += 0.00002 * (man_speed + 100);
     send_motors_to_pos(demo_left_wpos, demo_right_wpos);
-    air_PWM = 30 + (sin(phase/2)+1.0)*20;
+    air_PWM = 35 + (sin(phase / 4) + 1.0) * 30;
     air_motor.write(air_PWM);
   }
   else // home
   {
-    left_percent_power = limit(-left_pos * KP / 10 + KS * sign(left_pos), 40);
-    right_percent_power = limit(-right_pos * KP / 10 + KS * sign(right_pos), 40);
+    send_motors_to_pos(0, 0);
+    air_motor.write(10);
   }
 }
 
@@ -354,12 +364,19 @@ void setup()
   pinMode(air_PWM_pin, OUTPUT);
   pinMode(LED_auto_pin, OUTPUT);
   pinMode(LED_man_pin, OUTPUT);
+  pinMode(LED_red, OUTPUT);
+  pinMode(LED_blu, OUTPUT);
+  pinMode(LED_grn, OUTPUT);
 
   digitalWrite(LeftPWM_pin, LOW);
   digitalWrite(RightPWM_pin, LOW);
   digitalWrite(air_PWM_pin, LOW);
   digitalWrite(LED_auto_pin, LOW);
   digitalWrite(LED_man_pin, LOW);
+
+  digitalWrite(LED_grn, HIGH);
+  digitalWrite(LED_blu, LOW);
+  digitalWrite(LED_red, HIGH);
 
   left_motor.attach(LeftPWM_pin);
   right_motor.attach(RightPWM_pin);
@@ -370,11 +387,8 @@ void setup()
 void loop()
 {
   while ((millis() - last_run) < 1)
-  {
     ;
-  }
   last_run = millis();
-
   left_percent_power = 0;
   right_percent_power = 0;
   read_IO();
@@ -384,7 +398,6 @@ void loop()
     operate_auto_mode();
   else
     operate_demo_mode();
-
   operate_motors(left_percent_power, right_percent_power);
   operate_LEDs();
   send_tele();
