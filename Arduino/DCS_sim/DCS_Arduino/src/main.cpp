@@ -68,7 +68,7 @@ unsigned int CommsTimeout = 0;     // used to reduce motor power if there has be
 
 long time_turn_on, time_turn_off;
 bool led_on;
-int millis_on=200, millis_off=800;
+int millis_on = 200, millis_off = 800;
 bool green_LED_on = 0, blue_LED_on = 1, red_LED_on = 0;
 
 int limit(int val, int limits)
@@ -257,6 +257,19 @@ void send_motors_to_pos(int left_W, int right_W)
   right_percent_power = right_err * KP / 10 + KS * sign(right_err);
 }
 
+void LED_set_color(bool r, bool g, bool b)
+{
+  green_LED_on = g;
+  blue_LED_on = b;
+  red_LED_on = r;
+}
+
+void LED_set_timing(int time_on, int time_off)
+{
+  millis_on = time_on;
+  millis_off = time_off;
+}
+
 void operate_LEDs()
 {
   digitalWrite(LED_man_pin, man_mode);
@@ -276,9 +289,9 @@ void operate_LEDs()
   {
     if (millis() - time_turn_off > millis_off)
     {
-      digitalWrite(LED_grn, 1-green_LED_on);
-      digitalWrite(LED_blu, 1-blue_LED_on);
-      digitalWrite(LED_red, 1-red_LED_on);
+      digitalWrite(LED_grn, 1 - green_LED_on);
+      digitalWrite(LED_blu, 1 - blue_LED_on);
+      digitalWrite(LED_red, 1 - red_LED_on);
       time_turn_on = millis();
       led_on = 1;
     }
@@ -287,7 +300,7 @@ void operate_LEDs()
 
 void operate_air()
 {
-  if (!air_on || millis() < 1000)
+  if (!air_on || millis() < 2000)
     air_speed = 0;
   air_PWM = 10 + air_speed;
   air_motor.write(air_PWM);
@@ -295,15 +308,12 @@ void operate_air()
 
 void operate_manual_mode()
 {
-  green_LED_on = 0;
-  blue_LED_on = 1;
-  red_LED_on = 1;
-  
+  LED_set_color(1, 0, 1);
+
   int speed = dead_band(man_speed, 20);
   if (mode_up)
   {
-    millis_on = 200;
-    millis_off = 300;
+    LED_set_timing(200, 300);
     if (man_left)
       send_motors_to_pos(man_pos, man_pos);
     if (man_right)
@@ -311,8 +321,7 @@ void operate_manual_mode()
   }
   else if (mode_down)
   {
-    millis_on = 200;
-    millis_off = 1300;
+    LED_set_timing(200, 1300);
     if (man_left)
       left_percent_power = speed;
     if (man_right)
@@ -320,8 +329,7 @@ void operate_manual_mode()
   }
   else
   {
-    millis_on = 200;
-    millis_off = 800;
+    LED_set_timing(200, 800);
     if (man_left)
     {
       left_percent_power = speed;
@@ -342,19 +350,15 @@ void operate_manual_mode()
 }
 
 void operate_demo_mode()
-{ 
-  green_LED_on = 1;
-  blue_LED_on = 0;
-  red_LED_on = 0;
-
+{
+  LED_set_color(0, 1, 0);
   if (man_left)
     run_demo = 1;
   if (man_right)
     run_demo = 0;
   if (run_demo)
   {
-    millis_on = 200;
-    millis_off = 300;
+    LED_set_timing(200, 300);
     demo_left_wpos = int(sin(phase) * scale * 13);
     demo_right_wpos = int(sin(phase * 1.2) * scale * 13);
     phase += 0.00002 * (man_speed + 100);
@@ -364,8 +368,7 @@ void operate_demo_mode()
   }
   else // home
   {
-    millis_on = 300;
-    millis_off = 700;
+    LED_set_timing(300, 700);
     send_motors_to_pos(0, 0);
     air_motor.write(10);
   }
@@ -373,11 +376,8 @@ void operate_demo_mode()
 
 void operate_auto_mode()
 {
-  green_LED_on = 0;
-  blue_LED_on = 1;
-  red_LED_on = 0;
-  millis_on = 300;
-  millis_off = 700;
+  LED_set_color(0, 0, 1);
+  LED_set_timing(300, 700);
 
   read_data_from_serial(); // fills target_left and target_right
   if (enable_motion)
@@ -395,6 +395,7 @@ void operate_auto_mode()
       enable_motion = 0;
     }
   }
+  air_speed = 20;
   operate_air();
 }
 
