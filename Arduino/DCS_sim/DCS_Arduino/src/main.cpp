@@ -35,8 +35,8 @@
 #define left_max_pos 315
 #define right_min_pos -280
 #define right_max_pos 315
-#define KS 10
-#define KP 5 // X10  5 means 0.5
+#define KS 10 // 10
+#define KP 5  // X10  5 means 0.5
 #define PWM_zero 90
 #define max_pwr 60 // in %
 
@@ -66,9 +66,9 @@ unsigned int RxBuffer[5][2] = {0}; // 5 byte Rx Command Buffer for each of the t
 byte errorcount = 0;               // serial receive error detected by invalid packet start/end bytes
 unsigned int CommsTimeout = 0;     // used to reduce motor power if there has been no comms for a while
 
-long time_turn_on, time_turn_off;
+unsigned long time_turn_on, time_turn_off, time_started_homing;
 bool led_on;
-int millis_on = 200, millis_off = 800;
+unsigned long millis_on = 200, millis_off = 800;
 bool green_LED_on = 0, blue_LED_on = 1, red_LED_on = 0;
 
 int limit(int val, int limits)
@@ -109,6 +109,19 @@ int dead_band(int val, int db)
   return val;
 }
 
+void LED_set_color(bool r, bool g, bool b)
+{
+  green_LED_on = g;
+  blue_LED_on = b;
+  red_LED_on = r;
+}
+
+void LED_set_timing(int time_on, int time_off)
+{
+  millis_on = time_on;
+  millis_off = time_off;
+}
+
 void ParseCommand(int ComPort)
 {
   CommsTimeout = 0; // reset the comms timeout counter to indicate we are getting packets
@@ -123,10 +136,12 @@ void ParseCommand(int ComPort)
     break;
   case 'S':
     enable_motion = 1;
+    LED_set_timing(100, 300);
     break;
   case 'E':
     enable_motion = 0;
     home_in_progress = 1;
+    LED_set_timing(300, 1200);
     break;
   }
 }
@@ -257,19 +272,6 @@ void send_motors_to_pos(int left_W, int right_W)
   right_percent_power = right_err * KP / 10 + KS * sign(right_err);
 }
 
-void LED_set_color(bool r, bool g, bool b)
-{
-  green_LED_on = g;
-  blue_LED_on = b;
-  red_LED_on = r;
-}
-
-void LED_set_timing(int time_on, int time_off)
-{
-  millis_on = time_on;
-  millis_off = time_off;
-}
-
 void operate_LEDs()
 {
   digitalWrite(LED_man_pin, man_mode);
@@ -377,11 +379,12 @@ void operate_demo_mode()
 void operate_auto_mode()
 {
   LED_set_color(0, 0, 1);
-  LED_set_timing(300, 700);
-
   read_data_from_serial(); // fills target_left and target_right
   if (enable_motion)
+  {
     send_motors_to_pos(Target_left * scale / 20, Target_right * scale / 20);
+    time_started_homing = millis();
+  }
   else if (home_in_progress)
   {
     send_motors_to_pos(0, 0);
@@ -389,7 +392,7 @@ void operate_auto_mode()
       in_home_counter++;
     else
       in_home_counter = 0;
-    if (in_home_counter > 500)
+    if (in_home_counter > 500 || millis()-time_started_homing > 5000)
     {
       home_in_progress = 0;
       enable_motion = 0;

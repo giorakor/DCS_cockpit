@@ -1,0 +1,112 @@
+Delivered-To: kornblau@gmail.com
+Received: by 2002:ab3:180a:0:b0:224:2a46:b2dc with SMTP id y10csp404045lth;
+        Fri, 7 Apr 2023 06:52:08 -0700 (PDT)
+X-Google-Smtp-Source: AKy350a6siXDFgJK8ztER4nhWUddNBUJamLI56e5krh73Oati9VigBYXDM+axS1jW5isXnpME9sN
+X-Received: by 2002:a17:906:95d1:b0:947:ebd5:c798 with SMTP id n17-20020a17090695d100b00947ebd5c798mr2474797ejy.54.1680875528365;
+        Fri, 07 Apr 2023 06:52:08 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1680875528; cv=none;
+        d=google.com; s=arc-20160816;
+        b=LBHCQAH4usC9PbxcCy5sAU3nWFcJ/zpEqxXtJ7FTTH+hUKafqlVk0IkNIQQaAkwZEm
+         3AI2FqF4oD/d0W+IzMnv+0NdKPpPjy36hwgoZBqOOgdVg9+cYMRZF769vZi0znRL2Typ
+         Eut1NLzWHGNCkMEI3+E8TO65qZ7Kk4UYUOqf+kzKpxUNPD+L9f9IgXttRJEUj6FlaSoo
+         NKlfs/GxDgNy7OjvZ3jfyJJqCaB0v6As4/auArzlyfMj5h0Pt6Y2nbzV855ZdwdGfNmA
+         Um2n3KhleQ51PU99uNxvjquD0T7huM9U1vNPw8W12WIPca9mhPX7Z5QY1tmBzTQSIAdw
+         lSIQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20160816;
+        h=mime-version:feedback-id:references:in-reply-to:message-id:subject
+         :from:to:dkim-signature:date;
+        bh=Pa0wvltlT+ZRhAnX8pALfsVIjED8Je6xW9fUXkZoOcY=;
+        b=eDZmSOX+JrZQZcAyPfvaKmL3T+20P57SXK6Md86ZJwb96Zhvfh5cyQ1phd9n+u/au/
+         ufRTxC2e9y8cqS59OFKRMinh6ioaUVAJHc1YdaqJaeMFPXxzMMSnmjOO4muYXrj8fFF0
+         58r+cLqNSH5m8xJyQmzwv3cgWG1whxJ+1f4h3lTAARq+P9EohMP6ipBpVfNVUgAeuaBA
+         BJwsDTFQoEKfKipnZdNW3mFOM5kcZCmBkGNJx0ai1JSwqzPJ1FxzrayBcJg4pv8VH423
+         AD5GhDVUHlIUPXgZhKTNydwLlODb3TxncBocMpUSeQWJNsAXb402xamrSSPVLWqGkOVw
+         YuYQ==
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@proton.me header.s=protonmail header.b=Ly4xhOQ6;
+       spf=pass (google.com: domain of simshaker@proton.me designates 185.70.43.25 as permitted sender) smtp.mailfrom=simshaker@proton.me;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=proton.me
+Return-Path: <simshaker@proton.me>
+Received: from mail-4325.protonmail.ch (mail-4325.protonmail.ch. [185.70.43.25])
+        by mx.google.com with ESMTPS id hb41-20020a170907162900b008b223aa7a2dsi2400649ejc.734.2023.04.07.06.52.08
+        for <kornblau@gmail.com>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 07 Apr 2023 06:52:08 -0700 (PDT)
+Received-SPF: pass (google.com: domain of simshaker@proton.me designates 185.70.43.25 as permitted sender) client-ip=185.70.43.25;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@proton.me header.s=protonmail header.b=Ly4xhOQ6;
+       spf=pass (google.com: domain of simshaker@proton.me designates 185.70.43.25 as permitted sender) smtp.mailfrom=simshaker@proton.me;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=proton.me
+Date: Fri, 07 Apr 2023 13:51:57 +0000
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=proton.me;
+	s=protonmail; t=1680875527; x=1681134727;
+	bh=Pa0wvltlT+ZRhAnX8pALfsVIjED8Je6xW9fUXkZoOcY=;
+	h=Date:To:From:Subject:Message-ID:In-Reply-To:References:
+	 Feedback-ID:From:To:Cc:Date:Subject:Reply-To:Feedback-ID:
+	 Message-ID:BIMI-Selector;
+	b=Ly4xhOQ66wSI09wTSLo0XJAMwtGPzKsSVaX/I+M/g78cRxePAsz13OhBxwbAM9FcQ
+	 w7+MAeWfVe5lAYJ0vcYyry3+yLViJMBd1u/AEsgD3axn7qes97laJ8b5N7oumNXNbj
+	 OArYZRe1ICN3SK58+Cq8wwVL9lChFr5vlxjlqOcGkmIN1XDKa7SuU5xOnvUz/9caYD
+	 Zl/nh/PDJBAsz0PDuwwW3USkkJFt1bB9VzikFEnlRp5JsXtrotdB3evdRL8p2j3ert
+	 Ie0vzNUnPrttkWFzz6jS9LVFDQhS31V0ouV43FkzSCFG6heZ9I7yMvHLwwaEdCXe6B
+	 mNPotLLRx+UkA==
+To: Giora Kornblau <kornblau@gmail.com>
+From: SimShaker <simshaker@proton.me>
+Subject: Re: got a message that cant pay due to sactions
+Message-ID: <dRtMogHUSpGLyL9G9_wNEoc5Pau5KQjV3wr3KfBxFckUHbKNwpqo32DY1K2Mov6wmVZcfbsw6Hvn_RLdjf_tY2kWeBQqspQ9du0t5VA8t90=@proton.me>
+In-Reply-To: <CA+trSOoygCb8ajWSJGPJL2W8rvtgC45uqfo=3HWiVcBgvNF-ZA@mail.gmail.com>
+References: <CA+trSOph7KyfyedRtiV7LTY5bTKb4uZRSL+Y148qt3yL8GDYFA@mail.gmail.com> <AoVgCFCkzRNX2adSIQPfdGrDiBys_LGqcLa14j4ADzKtKxVLHUdKluZfWkLjYCTSUCDYMZDfJChy_NDbxAsXIH12kCDyAXqktFtPltlSrB8=@proton.me> <CA+trSOr3DUDPoNLc=0dNzz3Kx4EOnzzcQ9Z_Yv2-9NCMSn8URQ@mail.gmail.com> <EVO4gyS99G3gN3rF5Nzktt4iD-7U0ZE4Er5Cvews6jOBC9gZZA7mtiL39Ixga8dWw3QPkcX-a577cDbh7_Yiw_LhvanPOneJPusEnPTU0hE=@proton.me> <CA+trSOoygCb8ajWSJGPJL2W8rvtgC45uqfo=3HWiVcBgvNF-ZA@mail.gmail.com>
+Feedback-ID: 47226272:user:proton
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="b1_vn3S7JHAV8XzXJcwTW6OEiJbMdiEIdNv1NyxALWsPM"
+
+This is a multi-part message in MIME format.
+
+--b1_vn3S7JHAV8XzXJcwTW6OEiJbMdiEIdNv1NyxALWsPM
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: base64
+
+VGhhbmsgeW91LgpIZXJlIGlzIHRoZSBrZXk6CkRpY3hZdzlRVU9kUFdyamhYVjJVQ2tZR1hteVZ1
+UEw1UTM2RzZuRm1LVHM9CgpUaGUga2V5IGlzIHRpZWQgdG8geW91ciBQQyBuZXR3b3JrIGludGVy
+ZmFjZSBwYXJhbWV0ZXJzLgpJZiB5b3UgY2hhbmdlIG9yIHJlaW5zdGFsbCB0aGUgbmV0d29yayBp
+bnRlcmZhY2UsIHJlaW5zdGFsbCBvciBoZWF2aWx5IHVwZGF0ZSB0aGUgb3BlcmF0aW5nIHN5c3Rl
+bSwgZXRjLiwgeW91IG1heSBuZWVkIHRoZSBrZXkgdG8gYmUgcmUtZ2VuZXJhdGVkLgpJbiBzdWNo
+IGEgY2FzZSwgcGxlYXNlIHByb3ZpZGUgbWUgd2l0aCB5b3VyIG5ldyBhY3RpdmF0aW9uIHN0cmlu
+ZyB0byBnZXQgdGhlIGtleSByZWZyZXNoZWQuIFBsZWFzZSBrZWVwIHRoZSBjb3JyZXNwb25kZW5j
+ZSBoaXN0b3J5IGlmIHBvc3NpYmxlLgoKUmVhZCB0aGUgU2ltU2hha2VyIFNvdW5kIE1vZHVsZSBV
+c2VyIEd1aWRlIGNhcmVmdWxseSBodHRwczovL3NpbXNoYWtlci5jb20vZ3VpZGVzL3NvdW5kLwoK
+S2luZCByZWdhcmRzLApBbmRyZQ==
+
+--b1_vn3S7JHAV8XzXJcwTW6OEiJbMdiEIdNv1NyxALWsPM
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: base64
+
+PGRpdiBzdHlsZT0iZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5zLXNlcmlmOyBmb250LXNpemU6IDE2
+cHg7Ij48c3Bhbj5UaGFuayB5b3UuPC9zcGFuPjxkaXY+PHNwYW4+SGVyZSBpcyB0aGUga2V5Ojwv
+c3Bhbj48L2Rpdj48ZGl2PjxzcGFuPkRpY3hZdzlRVU9kUFdyamhYVjJVQ2tZR1hteVZ1UEw1UTM2
+RzZuRm1LVHM9PC9zcGFuPjwvZGl2PjxkaXY+PGJyPjwvZGl2PjxkaXY+PHNwYW4+VGhlIGtleSBp
+cyB0aWVkIHRvIHlvdXIgUEMgbmV0d29yayBpbnRlcmZhY2UgcGFyYW1ldGVycy4gPC9zcGFuPjwv
+ZGl2PjxkaXY+PHNwYW4+SWYgeW91IGNoYW5nZSBvciByZWluc3RhbGwgdGhlIG5ldHdvcmsgaW50
+ZXJmYWNlLCByZWluc3RhbGwgb3IgaGVhdmlseSB1cGRhdGUgdGhlIG9wZXJhdGluZyBzeXN0ZW0s
+IGV0Yy4sIHlvdSBtYXkgbmVlZCB0aGUga2V5IHRvIGJlIHJlLWdlbmVyYXRlZC4gPC9zcGFuPjwv
+ZGl2PjxkaXY+PHNwYW4+SW4gc3VjaCBhIGNhc2UsIHBsZWFzZSBwcm92aWRlIG1lIHdpdGggeW91
+ciBuZXcgYWN0aXZhdGlvbiBzdHJpbmcgdG8gZ2V0IHRoZSBrZXkgcmVmcmVzaGVkLiBQbGVhc2Ug
+a2VlcCB0aGUgY29ycmVzcG9uZGVuY2UgaGlzdG9yeSBpZiBwb3NzaWJsZS48L3NwYW4+PC9kaXY+
+PGRpdj48YnI+PC9kaXY+PGRpdj48c3Bhbj5SZWFkIHRoZSBTaW1TaGFrZXIgU291bmQgTW9kdWxl
+IFVzZXIgR3VpZGUgY2FyZWZ1bGx5IDxhIHRhcmdldD0iX2JsYW5rIiByZWw9Im5vcmVmZXJyZXIg
+bm9mb2xsb3cgbm9vcGVuZXIiIGhyZWY9Imh0dHBzOi8vc2ltc2hha2VyLmNvbS9ndWlkZXMvc291
+bmQvIj5odHRwczovL3NpbXNoYWtlci5jb20vZ3VpZGVzL3NvdW5kLzwvYT48L3NwYW4+PC9kaXY+
+PGRpdj48YnI+PC9kaXY+PC9kaXY+PGRpdiBzdHlsZT0iZm9udC1mYW1pbHk6IEFyaWFsLCBzYW5z
+LXNlcmlmOyBmb250LXNpemU6IDE2cHg7Ij48YnI+PC9kaXY+DQo8ZGl2IGNsYXNzPSJwcm90b25t
+YWlsX3NpZ25hdHVyZV9ibG9jayIgc3R5bGU9ImZvbnQtZmFtaWx5OiBBcmlhbCwgc2Fucy1zZXJp
+ZjsgZm9udC1zaXplOiAxNnB4OyI+DQogICAgPGRpdiBjbGFzcz0icHJvdG9ubWFpbF9zaWduYXR1
+cmVfYmxvY2stdXNlciI+DQogICAgICAgIDxkaXYgc3R5bGU9ImZvbnQtZmFtaWx5OmFyaWFsO2Zv
+bnQtc2l6ZToxNHB4O2NvbG9yOnJnYigzNCwzNCwzNCk7Ij5LaW5kIHJlZ2FyZHMsPC9kaXY+PGRp
+diBzdHlsZT0iZm9udC1mYW1pbHk6YXJpYWw7Zm9udC1zaXplOjE0cHg7Y29sb3I6cmdiKDM0LDM0
+LDM0KTsiPkFuZHJlPC9kaXY+PGRpdiBzdHlsZT0iZm9udC1mYW1pbHk6YXJpYWw7Zm9udC1zaXpl
+OjE0cHg7Y29sb3I6cmdiKDM0LDM0LDM0KTsiPjxicj48L2Rpdj48L2Rpdj48L2Rpdj4=
+
+
+--b1_vn3S7JHAV8XzXJcwTW6OEiJbMdiEIdNv1NyxALWsPM--
+
