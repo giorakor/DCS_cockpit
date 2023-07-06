@@ -35,11 +35,12 @@
 #define left_max_pos 315
 #define right_min_pos -280
 #define right_max_pos 315
-#define KS 10 // 10
-#define KP 5  // X10  5 means 0.5
+#define KS 2 // 10
+#define KP 5 // X10  5 means 0.5
 #define PWM_zero 90
-#define max_pwr 60 // in %
+#define max_pwr 50 // in %
 
+#define baud_rate 500000
 #define COM0 0         // hardware Serial Port
 #define START_BYTE '[' // Start Byte for serial commands
 #define END_BYTE ']'   // End Byte for serial commands
@@ -304,7 +305,7 @@ void operate_air()
 {
   if (!air_on || millis() < 2000)
     air_speed = 0;
-  air_PWM = 10 + air_speed;
+  air_PWM = 50 + air_speed;
   air_motor.write(air_PWM);
 }
 
@@ -365,7 +366,7 @@ void operate_demo_mode()
     demo_right_wpos = int(sin(phase * 1.2) * scale * 13);
     phase += 0.00002 * (man_speed + 100);
     send_motors_to_pos(demo_left_wpos, demo_right_wpos);
-    air_PWM = 20 + (sin(phase / 4) + 1.0) * 20;
+    air_PWM = 10 + (sin(phase / 4) + 1.0) * 20;
     air_motor.write(air_PWM);
   }
   else // home
@@ -392,19 +393,19 @@ void operate_auto_mode()
       in_home_counter++;
     else
       in_home_counter = 0;
-    if (in_home_counter > 500 || millis()-time_started_homing > 5000)
+    if (in_home_counter > 500 || millis() - time_started_homing > 5000)
     {
       home_in_progress = 0;
       enable_motion = 0;
     }
   }
-  air_speed = 20;
+  air_speed /= 4;
   operate_air();
 }
 
 void setup()
 {
-  Serial.begin(500000); // 115200
+  Serial.begin(baud_rate); 
   for (int i = 0; i < 38; i++)
     pinMode(i, INPUT_PULLUP);
   pinMode(LeftPWM_pin, OUTPUT);
@@ -423,7 +424,7 @@ void setup()
   digitalWrite(LED_man_pin, LOW);
 
   digitalWrite(LED_grn, HIGH);
-  digitalWrite(LED_blu, LOW);
+  digitalWrite(LED_blu, HIGH);
   digitalWrite(LED_red, HIGH);
 
   left_motor.attach(LeftPWM_pin);
