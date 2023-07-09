@@ -34,7 +34,7 @@
 #define right_min_pos -280
 #define right_max_pos 315
 #define KS 2 // 10
-#define KP 5 // X10  5 means 0.5
+#define KP 3 // X10  5 means 0.5
 #define PWM_zero 90
 #define PWM_range_per_side 60
 #define max_pwr 50 // in %

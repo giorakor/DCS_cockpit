@@ -119,13 +119,13 @@ void ParseCommand(int ComPort)
   {
   case 'A':
     prev_target_left = target_left;
-    target_left = range((RxBuffer[1][ComPort] * 256) + RxBuffer[2][ComPort] - 512, left__min_pos, left__max_pos);
-    target_left = target_left * motion_amplitude_scale / 20;
+    target_left = RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort] - 512;
+    target_left = range(target_left * motion_amplitude_scale / 20, left__min_pos, left__max_pos);
     break;
   case 'B':
     prev_target_right = target_right;
-    target_right = range((RxBuffer[1][ComPort] * 256) + RxBuffer[2][ComPort] - 512, right_min_pos, right_max_pos);
-    target_right = target_right * motion_amplitude_scale / 20;
+    target_right = RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort] - 512;
+    target_right = range(target_right * motion_amplitude_scale / 20, right_min_pos, right_max_pos);
     break;
   case 'S':
     enable_auto_motion = 1;
@@ -381,7 +381,7 @@ void operate_auto_mode()
     no_change_counter++;
   else
     no_change_counter = 0;
-  if (no_change_counter > 50)
+  if (no_change_counter > 20)
     data_is_changing = 0;
   else
     data_is_changing = 1;
