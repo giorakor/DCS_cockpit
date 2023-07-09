@@ -119,22 +119,20 @@ void ParseCommand(int ComPort)
   {
   case 'A':
     prev_target_left = target_left;
-    target_left = RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort] - 512;
-    target_left = range(target_left * motion_amplitude_scale / 20, left__min_pos, left__max_pos);
+    target_left = (RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort] - 512) * 3 / 5; // range -300...300
+    target_left = range((target_left * motion_amplitude_scale / 20) + pos_ofset, left__min_pos, left__max_pos);
     break;
   case 'B':
     prev_target_right = target_right;
-    target_right = RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort] - 512;
-    target_right = range(target_right * motion_amplitude_scale / 20, right_min_pos, right_max_pos);
+    target_right = (RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort] - 512) * 3 / 5;
+    target_right = range((target_right * motion_amplitude_scale / 20) + pos_ofset, right_min_pos, right_max_pos);
     break;
   case 'S':
     enable_auto_motion = 1;
-    LED_set_timing(100, 300);
     break;
   case 'E':
     enable_auto_motion = 0;
     home_in_progress = 1;
-    LED_set_timing(300, 1200);
     break;
   }
 }
@@ -241,13 +239,13 @@ void operate_motors(int left__percent, int right_percent)
   right_percent = limit(right_percent, max_pwr);
   left__percent = limit(left__percent, max_pwr);
 
-  if (right_percent > 0 && RightUL)
+  if (RightUL && right_percent > 0)
     right_percent = 0;
-  if (right_percent < 0 && RightLL)
+  if (RightLL && right_percent < 0)
     right_percent = 0;
-  if (left__percent > 0 && LeftUL)
+  if (LeftUL && left__percent > 0)
     left__percent = 0;
-  if (left__percent < 0 && LeftLL)
+  if (LeftLL && left__percent < 0)
     left__percent = 0;
 
   left__PWM = PWM_zero + (left__percent * PWM_range_per_side) / 100;
@@ -261,8 +259,10 @@ void calc_motors_pwr_to_pos(int left__W, int right_W)
 {
   int left__err = range(left__W, left__min_pos, left__max_pos) - left__pos;
   int right_err = range(right_W, right_min_pos, right_max_pos) - right_pos;
-  left__percent_power = left__err * KP / 10 + KS * sign(left__err);
-  right_percent_power = right_err * KP / 10 + KS * sign(right_err);
+  if (abs(left__err) > DB)
+    left__percent_power = left__err * KP / 10 + KS * sign(left__err);
+  if (abs(right_err) > DB)
+    right_percent_power = right_err * KP / 10 + KS * sign(right_err);
 }
 
 void set_LEDs(bool r, bool g, bool b)
@@ -300,7 +300,7 @@ void operate_air()
 {
   if (!air_on || millis() < 2000)
     air_speed = 0;
-  air_PWM = 50 + air_speed;
+  air_PWM = 10 + air_speed;
   air_motor.write(air_PWM);
 }
 
@@ -340,8 +340,7 @@ void operate_manual_mode()
   }
   if (left__PB) // home
   {
-    left__percent_power = limit(-left__pos * KP / 10 - KS * sign(left__pos), 40);
-    right_percent_power = limit(-right_pos * KP / 10 - KS * sign(right_pos), 40);
+    calc_motors_pwr_to_pos(0, 0);
   }
   operate_air();
   enable_auto_motion = 0;
@@ -361,7 +360,7 @@ void operate_demo_mode()
     demo_right_wpos = int(sin(phase * 1.2) * motion_amplitude_scale * 13);
     phase += 0.00002 * (man_speed + 100);
     calc_motors_pwr_to_pos(demo_left__wpos, demo_right_wpos);
-    air_PWM = 10 + (sin(phase / 4) + 1.0) * 20;
+    air_PWM = 5 + (sin(phase / 4) + 1.0) * 20;
     air_motor.write(air_PWM);
   }
   else // home
@@ -375,13 +374,19 @@ void operate_demo_mode()
 
 void operate_auto_mode()
 {
-  LED_set_color(0, 0, 1);
+  LED_set_color(1 - data_is_changing, home_in_progress, 1);
+  if (enable_auto_motion)
+    LED_set_timing(100, 200);
+  else
+    LED_set_timing(300, 1500);
+
   read_data_from_serial(); // fills target_left and target_right
   if (target_left == prev_target_left && target_right == prev_target_right)
     no_change_counter++;
   else
     no_change_counter = 0;
-  if (no_change_counter > 20)
+
+  if (no_change_counter > 500)
     data_is_changing = 0;
   else
     data_is_changing = 1;
@@ -389,7 +394,6 @@ void operate_auto_mode()
   if (enable_auto_motion && data_is_changing)
   {
     calc_motors_pwr_to_pos(target_left, target_right);
-    time_started_homing = millis();
   }
   else if (home_in_progress)
   {
@@ -398,12 +402,14 @@ void operate_auto_mode()
       in_home_counter++;
     else
       in_home_counter = 0;
-    if (in_home_counter > 500 || millis() - time_started_homing > 5000)
+    if (in_home_counter > 500 || millis() - time_started_homing > 3000)
     {
       home_in_progress = 0;
       enable_auto_motion = 0;
     }
   }
+  else
+    time_started_homing = millis();
   air_speed /= 4;
   operate_air();
 }
