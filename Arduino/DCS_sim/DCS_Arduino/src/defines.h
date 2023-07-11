@@ -35,9 +35,9 @@
 #define right_max_pos 315
 #define pos_ofset 20
 
-#define KS 10 // 10
-#define KP 4  // X10  5 means 0.5
-#define DB 6  // allowable error
+#define KS 5 // 10
+#define KP 4 // X10  5 means 0.5
+#define DB 6 // allowable error
 
 #define PWM_zero 90
 #define PWM_range_per_side 85

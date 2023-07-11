@@ -34,8 +34,10 @@ int right_percent_power = 0;
 
 int target_left = 0;
 int target_right = 0;
+int target_speed = 0;
 int prev_target_left = 0;
 int prev_target_right = 0;
+int prev_target_speed = 0;
 int no_change_counter = 0;
 
 int BufferEnd[2] = {-1};           // Rx Buffer end index for each of the two comm ports
@@ -119,13 +121,21 @@ void ParseCommand(int ComPort)
   {
   case 'A':
     prev_target_left = target_left;
-    target_left = (RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort] - 512) * 3 / 5; // range -300...300
+    target_left = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]); // range 0...1012
+    target_left = (target_left - 512) * 3 / 5;                            //-300...300
     target_left = range((target_left * motion_amplitude_scale / 20) + pos_ofset, left__min_pos, left__max_pos);
     break;
   case 'B':
     prev_target_right = target_right;
-    target_right = (RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort] - 512) * 3 / 5;
+    target_right = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
+    target_right = (target_right - 512) * 3 / 5;
     target_right = range((target_right * motion_amplitude_scale / 20) + pos_ofset, right_min_pos, right_max_pos);
+    break;
+  case 'C':
+    prev_target_speed = target_speed;
+    target_speed = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
+    target_speed = (target_speed - 512) / 7; // 0....70
+    target_speed = range((target_speed * air_speed / 100) + pos_ofset, 1, 100);
     break;
   case 'S':
     enable_auto_motion = 1;
@@ -248,8 +258,8 @@ void operate_motors(int left__percent, int right_percent)
   if (LeftLL && left__percent < 0)
     left__percent = 0;
 
-  left__PWM = PWM_zero + (left__percent * PWM_range_per_side) / 100;
-  right_PWM = PWM_zero + (right_percent * PWM_range_per_side) / 100;
+  left__PWM = (left__percent * PWM_range_per_side) / 100 + PWM_zero;
+  right_PWM = (right_percent * PWM_range_per_side) / 100 + PWM_zero;
 
   left__motor.write(left__PWM);
   right_motor.write(right_PWM);
@@ -300,6 +310,10 @@ void operate_air()
 {
   if (!air_on || millis() < 2000)
     air_speed = 0;
+  if (target_speed > 0 && enable_auto_motion)
+  {
+    air_speed = target_speed;
+  }
   air_PWM = 10 + air_speed;
   air_motor.write(air_PWM);
 }
@@ -344,6 +358,7 @@ void operate_manual_mode()
   }
   operate_air();
   enable_auto_motion = 0;
+  target_speed = 0;
 }
 
 void operate_demo_mode()
@@ -370,6 +385,7 @@ void operate_demo_mode()
     air_motor.write(10);
   }
   enable_auto_motion = 0;
+  target_speed = 0;
 }
 
 void operate_auto_mode()
@@ -410,7 +426,7 @@ void operate_auto_mode()
   }
   else
     time_started_homing = millis();
-  air_speed /= 4;
+  air_speed /= 3;
   operate_air();
 }
 
