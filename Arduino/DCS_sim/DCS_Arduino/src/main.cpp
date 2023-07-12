@@ -73,7 +73,7 @@ void LED_set_color(bool r, bool g, bool b)
   red_LED_on = r;
 }
 
-void wait_till_time_to_run()
+void wait_for_loop_t()
 {
   while ((millis() - last_run) < 1)
     ;
@@ -202,7 +202,7 @@ void send_tele()
   return;
 }
 
-void read_IO()
+void read_Arduino_IO()
 {
   // digitals
   LeftLL = 1 - digitalRead(LeftLL_pin);
@@ -414,7 +414,7 @@ void operate_auto_mode()
   air_speed /= 3;
 }
 
-void calc_motors_power()
+void calc_motors_pwr()
 {
   left__percent_power = 0;
   right_percent_power = 0;
@@ -458,9 +458,9 @@ void setup()
 
 void loop()
 {
-  wait_till_time_to_run();
-  read_IO();
-  calc_motors_power();
+  wait_for_loop_t();
+  read_Arduino_IO();
+  calc_motors_pwr();
   operate_motors(left__percent_power, right_percent_power);
   operate_air();
   operate_LEDs();
