@@ -18,7 +18,6 @@ bool mode_down;
 bool left__PB;
 bool enable_auto_motion = 0;
 bool home_in_progress = 0;
-bool data_is_changing;
 
 int man_speed;
 int air_speed;
@@ -398,40 +397,45 @@ void operate_demo_mode()
   target_air_speed = 0;
 }
 
-void operate_auto_mode()
+bool data_is_changing()
 {
-  LED_set_color(1 - data_is_changing, home_in_progress, 1); // blue on, g on during homing, r on when data is changing
-  if (enable_auto_motion)
-    LED_set_timing(100, 200);
-  else
-    LED_set_timing(300, 1500);
-
-  read_data_from_serial(); // fills target_left and target_right
   if (target_left == prev_target_left && target_right == prev_target_right)
     no_change_counter++;
   else
     no_change_counter = 0;
-
   if (no_change_counter > 500)
-    data_is_changing = 0;
+    return (0);
   else
-    data_is_changing = 1;
+    return (1);
+}
 
-  if (enable_auto_motion && data_is_changing)
+bool homing()
+{
+  calc_motors_pwr_to_pos(0, 0);
+  if (abs(left__pos) < 25 && abs(right_pos) < 25)
+    in_home_counter++;
+  else
+    in_home_counter = 0;
+  if (in_home_counter > 500 || millis() - time_started_homing > 3000)
+  {
+    home_in_progress = 0;
+    enable_auto_motion = 0;
+    left__percent_power = 0;
+    right_percent_power = 0;
+  }
+}
+
+void operate_auto_mode()
+{
+  LED_set_color(0, home_in_progress, 1); // blue on, g on during homing
+  LED_set_timing(100 + 400 * enable_auto_motion, 200 + 1300 * enable_auto_motion);
+
+  read_data_from_serial(); // fills target_left and target_right
+
+  if (enable_auto_motion && data_is_changing())
     calc_motors_pwr_to_pos(target_left, target_right);
   else if (home_in_progress)
-  {
-    calc_motors_pwr_to_pos(0, 0);
-    if (abs(left__pos) < 25 && abs(right_pos) < 25)
-      in_home_counter++;
-    else
-      in_home_counter = 0;
-    if (in_home_counter > 500 || millis() - time_started_homing > 3000)
-    {
-      home_in_progress = 0;
-      enable_auto_motion = 0;
-    }
-  }
+    homing();
   else
     time_started_homing = millis();
   air_speed /= 3;
