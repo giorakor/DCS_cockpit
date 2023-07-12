@@ -17,9 +17,9 @@
 #define mode_up_pin 34
 #define mode_down_pin 32
 #define left__PB_pin 36
-#define LED_red 44
-#define LED_blu 46
-#define LED_grn 45
+#define LED_red_pin 44
+#define LED_blu_pin 46
+#define LED_grn_pin 45
 // Analog pins
 #define left__pos_pin 0
 #define right_pos_pin 1
@@ -34,13 +34,12 @@
 #define right_min_pos -280
 #define right_max_pos 315
 #define pos_ofset 20
-
+// motors control
 #define KV 0 
 #define KS_left 10 // 10
 #define KS_right 6
 #define KP 4 // X10  5 means 0.5
 #define DB 6 // allowable error
-
 #define PWM_zero 90
 #define PWM_range_per_side 85
 #define max_pwr 60 // in %
