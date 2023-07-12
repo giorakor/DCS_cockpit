@@ -1,35 +1,34 @@
 #include <Arduino.h>
 #include <Servo.h>
 #include <defines.h>
-#include <math_funcs.cpp>
 
 float phase;
 
-bool LeftLL= 0;
-bool LeftUL= 0;
-bool RightLL= 0;
-bool RightUL= 0;
-bool man_right= 0;
-bool man_left= 0;
+bool LeftLL = 0;
+bool LeftUL = 0;
+bool RightLL = 0;
+bool RightUL = 0;
+bool man_right = 0;
+bool man_left = 0;
 bool run_demo = 0;
-bool auto_mode= 0;
-bool man_mode= 0;
-bool air_on= 0;
-bool mode_up= 0;
-bool mode_down= 0;
-bool left__PB= 0;
+bool auto_mode = 0;
+bool man_mode = 0;
+bool air_on = 0;
+bool mode_up = 0;
+bool mode_down = 0;
+bool left__PB = 0;
 bool enable_auto_motion = 0;
 bool home_in_progress = 0;
 
-int man_speed= 0;
-int air_speed= 0;
-int motion_amplitude_scale= 0;
-int left__pos_A= 0;
-int right_pos_A= 0;
-int man_pos= 0;
-int air_PWM= 0;
-int demo_left__wpos= 0;
-int demo_right_wpos= 0;
+int man_speed = 0;
+int air_speed = 0;
+int motion_amplitude_scale = 0;
+int left__pos_A = 0;
+int right_pos_A = 0;
+int man_pos = 0;
+int air_PWM = 0;
+int demo_left__wpos = 0;
+int demo_right_wpos = 0;
 int in_home_counter = 0;
 int left__percent_power = 0;
 int right_percent_power = 0;
@@ -38,7 +37,7 @@ int right_pos_W = 0;
 int air_speed_W = 0;
 int prev_left__pos_W = 0;
 int prev_right_pos_W = 0;
-int prev_air_speed_W = 0;
+int max_air_speed_W = 0;
 int no_change_counter = 0;
 int left__vel_W = 0;
 int right_vel_W = 0;
@@ -49,15 +48,15 @@ unsigned int RxBuffer[5][2] = {0}; // 5 byte Rx Command Buffer for each of the t
 unsigned int CommsTimeout = 0;     // used to reduce motor power if there has been no comms for a while
 byte errorcount = 0;               // serial receive error detected by invalid packet start/end bytes
 
-unsigned long last_sent_tele= 0;
-unsigned long last_run= 0;
-unsigned long time_turn_on= 0;
-unsigned long time_turn_off= 0;
-unsigned long time_started_homing= 0;
+unsigned long last_sent_tele = 0;
+unsigned long last_run = 0;
+unsigned long time_turn_on = 0;
+unsigned long time_turn_off = 0;
+unsigned long time_started_homing = 0;
 unsigned long millis_on = 200;
 unsigned long millis_off = 800;
 
-bool led_on= 0;
+bool led_on = 0;
 bool grn_LED_on = 0;
 bool blu_LED_on = 0;
 bool red_LED_on = 0;
@@ -65,6 +64,44 @@ bool red_LED_on = 0;
 Servo left__motor;
 Servo right_motor;
 Servo air_motor;
+
+int limit(int val, int limits)
+{
+  if (val > limits)
+    val = limits;
+  if (val < -limits)
+    val = -limits;
+  return val;
+}
+
+int range(int val, int lower, int upper)
+{
+  if (val > upper)
+    val = upper;
+  if (val < lower)
+    val = lower;
+  return val;
+}
+
+int sign(int val)
+{
+  if (val > 0)
+    return 1;
+  if (val < 0)
+    return -1;
+  return 0;
+}
+
+int dead_band(int val, int db)
+{
+  if (val > db)
+    val -= db;
+  else if (val < -db)
+    val += db;
+  else
+    val = 0;
+  return val;
+}
 
 void LED_set_color(bool r, bool g, bool b)
 {
@@ -93,22 +130,21 @@ void ParseCommand(int ComPort)
   switch (RxBuffer[0][ComPort])
   {
   case 'A':
-    prev_left__pos_W = left__pos_W;
     left__pos_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]); // range 0...1012
     left__pos_W = (left__pos_W - 512) * 3 / 5;                            //-300...300
     left__pos_W = range((left__pos_W * motion_amplitude_scale / 20) + pos_ofset, left__min_pos, left__max_pos);
     break;
   case 'B':
-    prev_right_pos_W = right_pos_W;
     right_pos_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
     right_pos_W = (right_pos_W - 512) * 3 / 5;
     right_pos_W = range((right_pos_W * motion_amplitude_scale / 20) + pos_ofset, right_min_pos, right_max_pos);
     break;
   case 'C':
-    prev_air_speed_W = air_speed_W;
     air_speed_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
     air_speed_W = (air_speed_W - 512) / 7;                                    // 0....70
-    air_speed_W = range((air_speed_W * air_speed / 100) + pos_ofset, 1, 100); // minimum 1 to detect that we recieved a value
+    air_speed_W = range((air_speed_W * air_speed / 100) + pos_ofset, 0, 100); //
+    if (air_speed_W > max_air_speed_W)
+      max_air_speed_W = air_speed_W;
     break;
   case 'L':
     left__vel_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
@@ -237,22 +273,8 @@ bool data_is_changing()
     return (0);
   else
     return (1);
-}
-
-bool homing()
-{
-  calc_motors_pwr_to_pos(0, 0);
-  if (abs(left__pos_A) < 25 && abs(right_pos_A) < 25)
-    in_home_counter++;
-  else
-    in_home_counter = 0;
-  if (in_home_counter > 500 || millis() - time_started_homing > 3000)
-  {
-    home_in_progress = 0;
-    enable_auto_motion = 0;
-    left__percent_power = 0;
-    right_percent_power = 0;
-  }
+  prev_right_pos_W = right_pos_W;
+  prev_left__pos_W = left__pos_W;
 }
 
 void operate_motors(int left__percent, int right_percent)
@@ -285,6 +307,22 @@ void calc_motors_pwr_to_pos(int left__W, int right_W)
     left__percent_power = left__vel_W * KV / 100 + left__err * KP / 10 + KS_left * sign(left__err);
   if (abs(right_err) > DB)
     right_percent_power = right_vel_W * KV / 100 + right_err * KP / 10 + KS_right * sign(right_err);
+}
+
+void homing()
+{
+  calc_motors_pwr_to_pos(0, 0);
+  if (abs(left__pos_A) < 25 && abs(right_pos_A) < 25)
+    in_home_counter++;
+  else
+    in_home_counter = 0;
+  if (in_home_counter > 500 || millis() - time_started_homing > 3000)
+  {
+    home_in_progress = 0;
+    enable_auto_motion = 0;
+    left__percent_power = 0;
+    right_percent_power = 0;
+  }
 }
 
 void set_LEDs(bool r, bool g, bool b)
@@ -320,12 +358,12 @@ void operate_LEDs()
 
 void operate_air()
 {
-  if (!air_on || millis() < 2000)
-    air_speed = 0;
-  if (air_speed_W > 0 && enable_auto_motion)
-  {
+  if (max_air_speed_W > 0 && enable_auto_motion)
     air_speed = air_speed_W;
-  }
+  else if (!air_on)
+    air_speed = 0;
+  if (millis() < 10000)
+    air_speed = 0;
   air_PWM = 10 + air_speed;
   air_motor.write(air_PWM);
 }
@@ -369,7 +407,7 @@ void operate_manual_mode()
     calc_motors_pwr_to_pos(0, 0);
   }
   enable_auto_motion = 0;
-  air_speed_W = 0;
+  max_air_speed_W = 0;
 }
 
 void operate_demo_mode()
@@ -395,13 +433,13 @@ void operate_demo_mode()
     air_speed = 0;
   }
   enable_auto_motion = 0;
-  air_speed_W = 0;
+  max_air_speed_W = 0;
 }
 
 void operate_auto_mode()
 {
   LED_set_color(0, home_in_progress, 1); // blue on, g on during homing
-  LED_set_timing(100 + 400 * enable_auto_motion, 200 + 1300 * enable_auto_motion);
+  LED_set_timing(100 + 400 * (1 - enable_auto_motion), 200 + 1300 * (1 - enable_auto_motion));
 
   read_data_from_serial(); // fills left__pos_W and right_pos_W
 
@@ -411,7 +449,7 @@ void operate_auto_mode()
     homing();
   else
     time_started_homing = millis();
-  air_speed /= 3;
+  air_speed /= 2;
 }
 
 void calc_motors_pwr()
