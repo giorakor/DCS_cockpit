@@ -23,9 +23,6 @@ static volatile int8_t currentServoIndex[_Nbr_16timers]; // index for the servo 
 #define SERVO_MIN() (MIN_PULSE_WIDTH - this->min * 4) // minimum value in us for this servo
 #define SERVO_MAX() (MAX_PULSE_WIDTH - this->max * 4) // maximum value in us for this servo
 
-#undef REFRESH_INTERVAL
-#define REFRESH_INTERVAL 3500
-
 void ServoHandler(int timer)
 {
   if (currentServoIndex[timer] < 0)
