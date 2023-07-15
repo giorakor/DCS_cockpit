@@ -136,20 +136,15 @@ void reset_wanted()
 }
 void ParseCommand(int ComPort)
 {
-  left__vel_factor = limit(min(left__pos_A - left__min_pos, left__max_pos - left__pos_A) * 10 / 4, 100); // 0...100
-  right_vel_factor = limit(min(right_pos_A - right_min_pos, right_max_pos - right_pos_A) * 10 / 4, 100); // 0...100
-
   CommsTimeout = 0; // reset the comms timeout counter to indicate we are getting packets
   switch (RxBuffer[0][ComPort])
   {
   case 'A':
-    prev_left__pos_W = left__pos_W;
     left__pos_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]); // range 0...1012
     left__pos_W = (left__pos_W - 512) * 3 / 5;                            //-300...300
     left__pos_W = range((left__pos_W * motion_amplitude_scale / 20) + pos_ofset, left__min_pos, left__max_pos);
     break;
   case 'B':
-    prev_right_pos_W = right_pos_W;
     right_pos_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
     right_pos_W = (right_pos_W - 512) * 3 / 5;
     right_pos_W = range((right_pos_W * motion_amplitude_scale / 20) + pos_ofset, right_min_pos, right_max_pos);
@@ -160,11 +155,13 @@ void ParseCommand(int ComPort)
     air_speed_W = range((air_speed_W * air_speed / 100), 0, 150); //
     break;
   case 'L':
+    left__vel_factor = limit(min(left__pos_A - left__min_pos, left__max_pos - left__pos_A) * 100 / dist_to_start_slowing, 100); // 0...100
     left__vel_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
     left__vel_W = dead_band((left__vel_W - 512) / 5 * left__vel_factor / 100, 4); // -100....100
     left__vel_W = range((left__vel_W * motion_amplitude_scale / 20), -100, 100);  //
     break;
   case 'R':
+    right_vel_factor = limit(min(right_pos_A - right_min_pos, right_max_pos - right_pos_A) * 100 / dist_to_start_slowing, 100); // 0...100
     right_vel_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
     right_vel_W = dead_band((right_vel_W - 512) / 5 * left__vel_factor / 100, 4); // -100....100
     right_vel_W = range((right_vel_W * motion_amplitude_scale / 20), -100, 100);  //
@@ -287,6 +284,8 @@ bool data_is_changing()
     no_change_counter++;
   else
     no_change_counter = 0;
+  prev_left__pos_W = left__pos_W;
+  prev_right_pos_W = right_pos_W;
   if (no_change_counter > 500)
     return (0);
   else
@@ -466,9 +465,12 @@ void calc_motors_pwr()
 {
   left__percent_power = 0;
   right_percent_power = 0;
-  if (auto_mode) // auto mode
+  if (auto_mode)
+  { // auto mode
     operate_auto_mode();
-  else if (man_mode)
+    return;
+  }
+  if (man_mode)
     operate_manual_mode();
   else
     operate_demo_mode();

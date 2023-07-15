@@ -34,12 +34,12 @@
 #define right_min_pos -280
 #define right_max_pos 315
 #define pos_ofset 20
-#define vel_zero_dist 40
+#define dist_to_start_slowing 40
 // motors control
-#define KV 75
+#define KV 50
 #define KS_left 8 // 10
 #define KS_right 5
-#define KP 5 // X10  5 means 0.5
+#define KP 4 // X10  5 means 0.5
 #define DB 5 // allowable error
 #define PWM_zero 90
 #define PWM_range_per_side 85
