@@ -13,9 +13,9 @@
 #define LED_man_pin 24
 #define auto_pin 26
 #define man_pin 28
-#define air_on_pin 30
-#define mode_up_pin 34
-#define mode_down_pin 32
+#define man_mode_pin 30
+#define air_force_on_pin 34
+#define air_off_pin 32
 #define left__PB_pin 36
 #define LED_red_pin 44
 #define LED_blu_pin 46
@@ -24,8 +24,8 @@
 #define left__pos_pin 0
 #define right_pos_pin 1
 #define man_speed_pin 2
-#define air_speed_pin 3
-#define scale_pin 4
+#define air_speed_pin 4
+#define scale_pin 3
 // calibrations
 #define left__pos_0 497
 #define right_pos_0 557
@@ -34,15 +34,18 @@
 #define right_min_pos -280
 #define right_max_pos 315
 #define pos_ofset 20
+#define vel_zero_dist 40
 // motors control
-#define KV 0
-#define KS_left 12 // 10
-#define KS_right 7
+#define KV 75
+#define KS_left 8 // 10
+#define KS_right 5
 #define KP 5 // X10  5 means 0.5
-#define DB 8 // allowable error
+#define DB 5 // allowable error
 #define PWM_zero 90
 #define PWM_range_per_side 85
 #define max_pwr 60 // in %
+#define air_zero_pwr 27
+
 // communication
 #define baud_rate 500000
 #define COM0 0         // hardware Serial Port

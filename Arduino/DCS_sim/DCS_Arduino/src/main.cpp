@@ -13,9 +13,10 @@ bool man_left = 0;
 bool run_demo = 0;
 bool auto_mode = 0;
 bool man_mode = 0;
-bool air_on = 0;
-bool mode_up = 0;
-bool mode_down = 0;
+bool man_mode_function = 0;
+bool prev_air_force_on = 0;
+bool air_force_on = 0;
+bool air_off = 0;
 bool left__PB = 0;
 bool enable_auto_motion = 0;
 bool home_in_progress = 0;
@@ -37,10 +38,11 @@ int right_pos_W = 0;
 int air_speed_W = 0;
 int prev_left__pos_W = 0;
 int prev_right_pos_W = 0;
-int max_air_speed_W = 0;
 int no_change_counter = 0;
 int left__vel_W = 0;
 int right_vel_W = 0;
+int left__vel_factor = 0;
+int right_vel_factor = 0;
 
 int BufferEnd[2] = {-1};           // Rx Buffer end index for each of the two comm ports
 unsigned int RxByte[2] = {0};      // Current byte received from each of the two comm ports
@@ -124,44 +126,57 @@ void LED_set_timing(int time_on, int time_off)
   millis_off = time_off;
 }
 
+void reset_wanted()
+{
+  left__pos_W = 0;
+  right_pos_W = 0;
+  left__vel_W = 0;
+  right_vel_W = 0;
+  air_speed_W = 0;
+}
 void ParseCommand(int ComPort)
 {
+  left__vel_factor = limit(min(left__pos_A - left__min_pos, left__max_pos - left__pos_A) * 10 / 4, 100); // 0...100
+  right_vel_factor = limit(min(right_pos_A - right_min_pos, right_max_pos - right_pos_A) * 10 / 4, 100); // 0...100
+
   CommsTimeout = 0; // reset the comms timeout counter to indicate we are getting packets
   switch (RxBuffer[0][ComPort])
   {
   case 'A':
+    prev_left__pos_W = left__pos_W;
     left__pos_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]); // range 0...1012
     left__pos_W = (left__pos_W - 512) * 3 / 5;                            //-300...300
     left__pos_W = range((left__pos_W * motion_amplitude_scale / 20) + pos_ofset, left__min_pos, left__max_pos);
     break;
   case 'B':
+    prev_right_pos_W = right_pos_W;
     right_pos_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
     right_pos_W = (right_pos_W - 512) * 3 / 5;
     right_pos_W = range((right_pos_W * motion_amplitude_scale / 20) + pos_ofset, right_min_pos, right_max_pos);
     break;
   case 'C':
     air_speed_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-    air_speed_W = (air_speed_W - 512) / 7;                                    // 0....70
-    air_speed_W = range((air_speed_W * air_speed / 100) + pos_ofset, 0, 100); //
-    if (air_speed_W > max_air_speed_W)
-      max_air_speed_W = air_speed_W;
+    air_speed_W = (air_speed_W - 512) / 4;                        // 0....90
+    air_speed_W = range((air_speed_W * air_speed / 100), 0, 150); //
     break;
   case 'L':
     left__vel_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-    left__vel_W = (left__vel_W - 512) / 5;                                       // 0....100
-    left__vel_W = range((left__vel_W * motion_amplitude_scale / 20), -100, 100); //
+    left__vel_W = dead_band((left__vel_W - 512) / 5 * left__vel_factor / 100, 4); // -100....100
+    left__vel_W = range((left__vel_W * motion_amplitude_scale / 20), -100, 100);  //
     break;
   case 'R':
     right_vel_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-    right_vel_W = (right_vel_W - 512) / 5;                                       // 0....100
-    right_vel_W = range((right_vel_W * motion_amplitude_scale / 20), -100, 100); //
+    right_vel_W = dead_band((right_vel_W - 512) / 5 * left__vel_factor / 100, 4); // -100....100
+    right_vel_W = range((right_vel_W * motion_amplitude_scale / 20), -100, 100);  //
     break;
   case 'S':
     enable_auto_motion = 1;
+    reset_wanted();
     break;
   case 'E':
     enable_auto_motion = 0;
     home_in_progress = 1;
+    reset_wanted();
     break;
   }
 }
@@ -240,6 +255,8 @@ void send_tele()
 
 void read_Arduino_IO()
 {
+  prev_air_force_on = air_force_on;
+
   // digitals
   LeftLL = 1 - digitalRead(LeftLL_pin);
   LeftUL = 1 - digitalRead(LeftUL_pin);
@@ -249,10 +266,11 @@ void read_Arduino_IO()
   man_right = 1 - digitalRead(man_right_pin);
   auto_mode = 1 - digitalRead(auto_pin);
   man_mode = 1 - digitalRead(man_pin);
-  air_on = 1 - digitalRead(air_on_pin);
-  mode_up = 1 - digitalRead(mode_up_pin);
-  mode_down = 1 - digitalRead(mode_down_pin);
+  man_mode_function = 1 - digitalRead(man_mode_pin);
+  air_force_on = 1 - digitalRead(air_force_on_pin);
+  air_off = 1 - digitalRead(air_off_pin);
   left__PB = 1 - digitalRead(left__PB_pin);
+
   // analogs
   left__pos_A = analogRead(left__pos_pin) - left__pos_0;
   right_pos_A = 1023 - analogRead(right_pos_pin) - right_pos_0;
@@ -273,8 +291,6 @@ bool data_is_changing()
     return (0);
   else
     return (1);
-  prev_right_pos_W = right_pos_W;
-  prev_left__pos_W = left__pos_W;
 }
 
 void operate_motors(int left__percent, int right_percent)
@@ -303,10 +319,12 @@ void calc_motors_pwr_to_pos(int left__W, int right_W)
 {
   int left__err = range(left__W, left__min_pos, left__max_pos) - left__pos_A;
   int right_err = range(right_W, right_min_pos, right_max_pos) - right_pos_A;
+  left__percent_power = left__vel_W * KV / 100 + KS_left * sign(left__vel_W);
   if (abs(left__err) > DB)
-    left__percent_power = left__vel_W * KV / 100 + left__err * KP / 10 + KS_left * sign(left__err);
+    left__percent_power = limit(left__percent_power + left__err * KP / 10, 100);
+  right_percent_power = right_vel_W * KV / 100 + KS_right * sign(right_vel_W);
   if (abs(right_err) > DB)
-    right_percent_power = right_vel_W * KV / 100 + right_err * KP / 10 + KS_right * sign(right_err);
+    right_percent_power = limit(right_percent_power + right_err * KP / 10, 100);
 }
 
 void homing()
@@ -358,21 +376,24 @@ void operate_LEDs()
 
 void operate_air()
 {
-  if (max_air_speed_W > 0 && enable_auto_motion)
-    air_speed = air_speed_W;
-  else if (!air_on)
+  if (!air_force_on && !air_off) // mid pos - auto air
+  {
+    if (enable_auto_motion)
+      air_speed = max(0, air_speed_W - 1);
+    else
+      air_speed = 0;
+  }
+  if (air_off || millis() < 10000)
     air_speed = 0;
-  if (millis() < 10000)
-    air_speed = 0;
-  air_PWM = 10 + air_speed;
+  air_PWM = air_zero_pwr + air_speed;
   air_motor.write(air_PWM);
 }
 
 void operate_manual_mode()
 {
   LED_set_color(1, 0, 1);
-  int speed = dead_band(man_speed, 20);
-  if (mode_up)
+  int speed = dead_band(man_speed, 15);
+  if (man_mode_function)
   {
     LED_set_timing(200, 300);
     if (man_left)
@@ -380,7 +401,7 @@ void operate_manual_mode()
     if (man_right)
       calc_motors_pwr_to_pos(man_pos, -man_pos);
   }
-  else if (mode_down)
+  else
   {
     LED_set_timing(200, 1300);
     if (man_left)
@@ -388,26 +409,11 @@ void operate_manual_mode()
     if (man_right)
       right_percent_power = speed;
   }
-  else
-  {
-    LED_set_timing(200, 800);
-    if (man_left)
-    {
-      left__percent_power = speed;
-      right_percent_power = speed;
-    }
-    if (man_right)
-    {
-      left__percent_power = speed;
-      right_percent_power = -speed;
-    }
-  }
   if (left__PB) // home
   {
     calc_motors_pwr_to_pos(0, 0);
   }
   enable_auto_motion = 0;
-  max_air_speed_W = 0;
 }
 
 void operate_demo_mode()
@@ -433,7 +439,6 @@ void operate_demo_mode()
     air_speed = 0;
   }
   enable_auto_motion = 0;
-  max_air_speed_W = 0;
 }
 
 void operate_auto_mode()
@@ -445,7 +450,12 @@ void operate_auto_mode()
 
   if (enable_auto_motion && data_is_changing())
     calc_motors_pwr_to_pos(left__pos_W, right_pos_W);
-  else if (home_in_progress)
+  else
+  {
+    left__percent_power = 0;
+    right_percent_power = 0;
+  }
+  if (home_in_progress)
     homing();
   else
     time_started_homing = millis();
