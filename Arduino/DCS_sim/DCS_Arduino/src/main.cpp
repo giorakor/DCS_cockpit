@@ -168,6 +168,7 @@ void ParseCommand(int ComPort)
     break;
   case 'S':
     enable_auto_motion = 1;
+    home_in_progress = 0;
     reset_wanted();
     break;
   case 'E':
@@ -257,9 +258,9 @@ void read_Arduino_IO()
   // digitals
   LeftLL = 1 - digitalRead(LeftLL_pin);
   LeftUL = 1 - digitalRead(LeftUL_pin);
-  man_left = 1 - digitalRead(man_left__pin);
   RightLL = 1 - digitalRead(RightLL_pin);
   RightUL = 1 - digitalRead(RightUL_pin);
+  man_left = 1 - digitalRead(man_left__pin);
   man_right = 1 - digitalRead(man_right_pin);
   auto_mode = 1 - digitalRead(auto_pin);
   man_mode = 1 - digitalRead(man_pin);
@@ -271,8 +272,8 @@ void read_Arduino_IO()
   // analogs
   left__pos_A = analogRead(left__pos_pin) - left__pos_0;
   right_pos_A = 1023 - analogRead(right_pos_pin) - right_pos_0;
-  man_speed = limit((analogRead(man_speed_pin) - 465) / 5, 100);     // -100 ... 100
   man_pos = limit((analogRead(man_speed_pin) - 465), 400);           // -400 ... 400
+  man_speed = man_pos / 4;                                           // -100 ... 100
   air_speed = range((analogRead(air_speed_pin) - 23) / 10, 0, 100);  // 0 ... 100
   motion_amplitude_scale = range(analogRead(scale_pin) / 50, 0, 20); // 0 ... 20
   return;
@@ -284,10 +285,14 @@ bool data_is_changing()
     no_change_counter++;
   else
     no_change_counter = 0;
+
   prev_left__pos_W = left__pos_W;
   prev_right_pos_W = right_pos_W;
   if (no_change_counter > 500)
+  {
+    no_change_counter = 501;
     return (0);
+  }
   else
     return (1);
 }
@@ -373,7 +378,7 @@ void operate_LEDs()
   }
 }
 
-void operate_air()
+void operate_blower()
 {
   if (!air_force_on && !air_off) // mid pos - auto air
   {
@@ -442,22 +447,27 @@ void operate_demo_mode()
 
 void operate_auto_mode()
 {
-  LED_set_color(0, home_in_progress, 1); // blue on, g on during homing
+  bool data_is_changing_b = data_is_changing();
+  LED_set_color(0, data_is_changing_b, 1 - data_is_changing_b); // blue on, g on during homing
   LED_set_timing(100 + 400 * (1 - enable_auto_motion), 200 + 1300 * (1 - enable_auto_motion));
 
   read_data_from_serial(); // fills left__pos_W and right_pos_W
 
-  if (enable_auto_motion && data_is_changing())
+  if (enable_auto_motion && data_is_changing_b)
+  {
     calc_motors_pwr_to_pos(left__pos_W, right_pos_W);
+  }
   else
   {
     left__percent_power = 0;
     right_percent_power = 0;
   }
+
   if (home_in_progress)
     homing();
   else
     time_started_homing = millis();
+
   air_speed /= 2;
 }
 
@@ -512,7 +522,7 @@ void loop()
   read_Arduino_IO();
   calc_motors_pwr();
   operate_motors(left__percent_power, right_percent_power);
-  operate_air();
+  operate_blower();
   operate_LEDs();
   if (man_mode)
     send_tele();
