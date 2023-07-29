@@ -506,6 +506,7 @@ void setup()
   digitalWrite(air_PWM_pin, LOW);
   digitalWrite(LED_auto_pin, LOW);
   digitalWrite(LED_man_pin, LOW);
+
   digitalWrite(LED_grn_pin, HIGH);
   digitalWrite(LED_blu_pin, HIGH);
   digitalWrite(LED_red_pin, HIGH);
@@ -514,6 +515,21 @@ void setup()
   right_motor.attach(RightPWM_pin);
   air_motor.attach(air_PWM_pin);
   air_motor.write(10);
+
+  set_LEDs(1, 0, 0);
+  digitalWrite(LED_auto_pin, HIGH);
+  digitalWrite(LED_man_pin, LOW);
+  delay(600);
+
+  set_LEDs(0, 1, 0);
+  digitalWrite(LED_auto_pin, LOW);
+  digitalWrite(LED_man_pin, HIGH);
+  delay(600);
+
+  set_LEDs(0, 0, 1);
+  digitalWrite(LED_auto_pin, LOW);
+  digitalWrite(LED_man_pin, LOW);
+  delay(600);
 }
 
 void loop()
