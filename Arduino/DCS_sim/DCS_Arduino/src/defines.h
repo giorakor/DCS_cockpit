@@ -27,20 +27,20 @@
 #define air_speed_pin 4
 #define scale_pin 3
 // calibrations
-#define left__pos_0 497
-#define right_pos_0 557
-#define left__min_pos -280
-#define left__max_pos 315
-#define right_min_pos -280
-#define right_max_pos 315
+#define left__pos_0 470
+#define right_pos_0 460
+#define left__min_pos -300
+#define left__max_pos 400
+#define right_min_pos -300
+#define right_max_pos 400
 #define pos_ofset 20
 #define dist_to_start_slowing 40
 // motors control
-#define KV 50
-#define KS_left 8 // 10
-#define KS_right 8
+#define KV 0
+#define KS_left 10
+#define KS_right 10
 #define KP 8 // X10  5 means 0.5
-#define DB 4 // allowable error
+#define DB 2 // allowable error
 #define PWM_zero 90
 #define PWM_range_per_side 85
 #define max_pwr 95 // in %

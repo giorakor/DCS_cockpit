@@ -272,7 +272,7 @@ void read_Arduino_IO()
   // analogs
   left__pos_A = analogRead(left__pos_pin) - left__pos_0;
   right_pos_A = 1023 - analogRead(right_pos_pin) - right_pos_0;
-  man_pos = limit((analogRead(man_speed_pin) - 465), 400);           // -400 ... 400
+  man_pos = limit((analogRead(man_speed_pin) - 465), 460);           // -400 ... 400
   man_speed = man_pos / 4;                                           // -100 ... 100
   air_speed = range((analogRead(air_speed_pin) - 23) / 10, 0, 100);  // 0 ... 100
   motion_amplitude_scale = range(analogRead(scale_pin) / 50, 0, 20); // 0 ... 20
@@ -323,12 +323,18 @@ void calc_motors_pwr_to_pos(int left__W, int right_W)
 {
   int left__err = range(left__W, left__min_pos, left__max_pos) - left__pos_A;
   int right_err = range(right_W, right_min_pos, right_max_pos) - right_pos_A;
-  left__percent_power = left__vel_W * KV / 100 + KS_left * sign(left__vel_W);
+  left__percent_power = left__vel_W * KV / 100;
   if (abs(left__err) > DB)
-    left__percent_power = limit(left__percent_power + left__err * KP / 10, 100);
-  right_percent_power = right_vel_W * KV / 100 + KS_right * sign(right_vel_W);
+  {
+    left__percent_power += left__err * KP / 10;
+    left__percent_power = limit(left__percent_power + KS_left * sign(left__percent_power), 100);
+  }
+  right_percent_power = right_vel_W * KV / 100;
   if (abs(right_err) > DB)
-    right_percent_power = limit(right_percent_power + right_err * KP / 10, 100);
+  {
+    right_percent_power += right_err * KP / 10;
+    right_percent_power = limit(right_percent_power + KS_right * sign(right_percent_power), 100);
+  }
 }
 
 void homing()
