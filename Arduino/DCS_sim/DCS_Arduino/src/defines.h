@@ -38,12 +38,12 @@
 // motors control
 #define KV 50
 #define KS_left 8 // 10
-#define KS_right 5
-#define KP 4 // X10  5 means 0.5
-#define DB 8 // allowable error
+#define KS_right 8
+#define KP 8 // X10  5 means 0.5
+#define DB 4 // allowable error
 #define PWM_zero 90
 #define PWM_range_per_side 85
-#define max_pwr 60 // in %
+#define max_pwr 95 // in %
 #define air_zero_pwr 25
 
 // communication
