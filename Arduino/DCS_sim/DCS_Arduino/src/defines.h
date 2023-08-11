@@ -33,13 +33,13 @@
 #define left__max_pos 400
 #define right_min_pos -300
 #define right_max_pos 400
-#define pos_ofset 20
+#define pos_ofset 50 // (max pos - min pos) /2
 #define dist_to_start_slowing 40
 // motors control
 #define KV 0
 #define KS_left 10
 #define KS_right 10
-#define KP 8 // X10  5 means 0.5
+#define KP 7 // X10  5 means 0.5
 #define DB 2 // allowable error
 #define PWM_zero 90
 #define PWM_range_per_side 85

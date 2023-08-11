@@ -140,13 +140,13 @@ void ParseCommand(int ComPort)
   switch (RxBuffer[0][ComPort])
   {
   case 'A':
-    left__pos_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]); // range 0...1012
-    left__pos_W = (left__pos_W - 512) * 3 / 5;                            //-300...300
+    left__pos_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]); // range 0...1023
+    left__pos_W = (left__pos_W - 512) * 4 / 5;                            //-400...400
     left__pos_W = range((left__pos_W * motion_amplitude_scale / 20) + pos_ofset, left__min_pos, left__max_pos);
     break;
   case 'B':
     right_pos_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-    right_pos_W = (right_pos_W - 512) * 3 / 5;
+    right_pos_W = (right_pos_W - 512) * 4 / 5;
     right_pos_W = range((right_pos_W * motion_amplitude_scale / 20) + pos_ofset, right_min_pos, right_max_pos);
     break;
   case 'C':
