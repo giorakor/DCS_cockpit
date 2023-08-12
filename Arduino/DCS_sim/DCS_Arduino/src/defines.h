@@ -27,8 +27,8 @@
 #define air_speed_pin 4
 #define scale_pin 3
 // calibrations
-#define left__pos_0 470
-#define right_pos_0 460
+#define left__pos_0 512
+#define right_pos_0 490
 #define left__min_pos -400
 #define left__max_pos 400
 #define right_min_pos -400

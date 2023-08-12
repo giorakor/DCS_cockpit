@@ -222,6 +222,8 @@ void send_tele()
 {
   if (millis() - last_sent_tele > 50)
   {
+    Serial.print(" W: ");
+    Serial.print(man_pos);
     Serial.print(" LP: ");
     Serial.print(left__pos_A);
     Serial.print(" RP: ");
@@ -231,10 +233,10 @@ void send_tele()
     Serial.print(" R%: ");
     Serial.print(right_percent_power);
     Serial.print(" lft LL UL, rgt LL UL: ");
-    Serial.print(LeftLL);
-    Serial.print(LeftUL);
-    Serial.print(RightLL);
-    Serial.print(RightUL);
+    //Serial.print(LeftLL);
+    //Serial.print(LeftUL);
+    //Serial.print(RightLL);
+    //Serial.print(RightUL);
     // Serial.print(" AirP: ");
     // Serial.print(air_PWM);
     // Serial.print(" spd: ");
@@ -246,7 +248,7 @@ void send_tele()
     //  Serial.print(" lft, rgt: ");
     //  Serial.print(man_left);
     //  Serial.print(man_right);
-    Serial.println(" !");
+    Serial.println(" ");
     last_sent_tele = millis();
   }
   return;
@@ -274,7 +276,7 @@ void read_Arduino_IO()
   left__pos_A = analogRead(left__pos_pin) - left__pos_0;
   right_pos_A = 1023 - analogRead(right_pos_pin) - right_pos_0;
   man_pos = limit((analogRead(man_speed_pin) - 465), 460); // -400 ... 400
-  filtered_wanted = 0.9 * filtered_wanted + 0.1 * man_pos;
+  filtered_wanted = 0.99 * filtered_wanted + 0.01 * man_pos;
   man_pos = int(filtered_wanted);
   man_speed = man_pos / 4;                                           // -100 ... 100
   air_speed = range((analogRead(air_speed_pin) - 23) / 10, 0, 100);  // 0 ... 100
