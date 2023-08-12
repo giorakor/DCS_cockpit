@@ -36,7 +36,6 @@
 #define pos_ofset -14 //
 #define dist_to_start_slowing 40
 // motors control
-#define KV 0
 #define KS_left 10
 #define KS_right 10
 #define KP 7 // X10  5 means 0.5

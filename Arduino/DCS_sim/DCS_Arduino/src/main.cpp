@@ -4,7 +4,7 @@
 
 float phase;
 float filtered_wanted;
-
+bool encoer_fault = 0;
 bool LeftLL = 0;
 bool LeftUL = 0;
 bool RightLL = 0;
@@ -15,7 +15,6 @@ bool run_demo = 0;
 bool auto_mode = 0;
 bool man_mode = 0;
 bool man_mode_function = 0;
-bool prev_air_force_on = 0;
 bool air_force_on = 0;
 bool air_off = 0;
 bool left__PB = 0;
@@ -40,10 +39,6 @@ int air_speed_W = 0;
 int prev_left__pos_W = 0;
 int prev_right_pos_W = 0;
 int no_change_counter = 0;
-int left__vel_W = 0;
-int right_vel_W = 0;
-int left__vel_factor = 0;
-int right_vel_factor = 0;
 
 int BufferEnd[2] = {-1};           // Rx Buffer end index for each of the two comm ports
 unsigned int RxByte[2] = {0};      // Current byte received from each of the two comm ports
@@ -131,8 +126,6 @@ void reset_wanted()
 {
   left__pos_W = 0;
   right_pos_W = 0;
-  left__vel_W = 0;
-  right_vel_W = 0;
   air_speed_W = 0;
 }
 void ParseCommand(int ComPort)
@@ -155,18 +148,6 @@ void ParseCommand(int ComPort)
     air_speed_W = (air_speed_W - 512) / 4;                        // 0....90
     air_speed_W = range((air_speed_W * air_speed / 100), 0, 150); //
     break;
-  // case 'L':
-  //   left__vel_factor = limit(min(left__pos_A - left__min_pos, left__max_pos - left__pos_A) * 100 / dist_to_start_slowing, 100); // 0...100
-  //   left__vel_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-  //   left__vel_W = dead_band((left__vel_W - 512) / 5 * left__vel_factor / 100, 4); // -100....100
-  //   left__vel_W = range((left__vel_W * motion_amplitude_scale / 20), -100, 100);  //
-  //   break;
-  // case 'R':
-  //   right_vel_factor = limit(min(right_pos_A - right_min_pos, right_max_pos - right_pos_A) * 100 / dist_to_start_slowing, 100); // 0...100
-  //   right_vel_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-  //   right_vel_W = dead_band((right_vel_W - 512) / 5 * left__vel_factor / 100, 4); // -100....100
-  //   right_vel_W = range((right_vel_W * motion_amplitude_scale / 20), -100, 100);  //
-  //   break;
   case 'S':
     enable_auto_motion = 1;
     home_in_progress = 0;
@@ -233,21 +214,21 @@ void send_tele()
     Serial.print(" R%: ");
     Serial.print(right_percent_power);
     Serial.print(" lft LL UL, rgt LL UL: ");
-    //Serial.print(LeftLL);
-    //Serial.print(LeftUL);
-    //Serial.print(RightLL);
-    //Serial.print(RightUL);
-    // Serial.print(" AirP: ");
-    // Serial.print(air_PWM);
-    // Serial.print(" spd: ");
-    //  Serial.print(man_speed);
-    //  Serial.print(" air: ");
-    //  Serial.print(air_speed);
-    //  Serial.print(" motion_amplitude_scale: ");
-    //  Serial.print(motion_amplitude_scale);
-    //  Serial.print(" lft, rgt: ");
-    //  Serial.print(man_left);
-    //  Serial.print(man_right);
+    // Serial.print(LeftLL);
+    // Serial.print(LeftUL);
+    // Serial.print(RightLL);
+    // Serial.print(RightUL);
+    //  Serial.print(" AirP: ");
+    //  Serial.print(air_PWM);
+    //  Serial.print(" spd: ");
+    //   Serial.print(man_speed);
+    //   Serial.print(" air: ");
+    //   Serial.print(air_speed);
+    //   Serial.print(" motion_amplitude_scale: ");
+    //   Serial.print(motion_amplitude_scale);
+    //   Serial.print(" lft, rgt: ");
+    //   Serial.print(man_left);
+    //   Serial.print(man_right);
     Serial.println(" ");
     last_sent_tele = millis();
   }
@@ -256,31 +237,41 @@ void send_tele()
 
 void read_Arduino_IO()
 {
-  prev_air_force_on = air_force_on;
-
   // digitals
   LeftLL = 1 - digitalRead(LeftLL_pin);
   LeftUL = 1 - digitalRead(LeftUL_pin);
   RightLL = 1 - digitalRead(RightLL_pin);
   RightUL = 1 - digitalRead(RightUL_pin);
-  man_left = 1 - digitalRead(man_left__pin);
-  man_right = 1 - digitalRead(man_right_pin);
   auto_mode = 1 - digitalRead(auto_pin);
   man_mode = 1 - digitalRead(man_pin);
-  man_mode_function = 1 - digitalRead(man_mode_pin);
   air_force_on = 1 - digitalRead(air_force_on_pin);
   air_off = 1 - digitalRead(air_off_pin);
-  left__PB = 1 - digitalRead(left__PB_pin);
 
   // analogs
-  left__pos_A = analogRead(left__pos_pin) - left__pos_0;
-  right_pos_A = 1023 - analogRead(right_pos_pin) - right_pos_0;
-  man_pos = limit((analogRead(man_speed_pin) - 465), 460); // -400 ... 400
-  filtered_wanted = 0.99 * filtered_wanted + 0.01 * man_pos;
-  man_pos = int(filtered_wanted);
-  man_speed = man_pos / 4;                                           // -100 ... 100
+  left__pos_A = analogRead(left__pos_pin);
+  right_pos_A = 1023 - analogRead(right_pos_pin);
+  if (left__pos_A < 20 || left__pos_A > 1000 || right_pos_A < 20 || right_pos_A > 1000)
+  {
+    encoer_fault = 1;
+  }
+  left__pos_A -= left__pos_0;
+  right_pos_A -= right_pos_0;
+
   air_speed = range((analogRead(air_speed_pin) - 23) / 10, 0, 100);  // 0 ... 100
   motion_amplitude_scale = range(analogRead(scale_pin) / 50, 0, 20); // 0 ... 20
+
+  // manual mode inputs
+  if (man_mode)
+  {
+    left__PB = 1 - digitalRead(left__PB_pin);
+    man_left = 1 - digitalRead(man_left__pin);
+    man_right = 1 - digitalRead(man_right_pin);
+    man_mode_function = 1 - digitalRead(man_mode_pin);
+    man_pos = limit((analogRead(man_speed_pin) - 465), 460); // -400 ... 400
+    filtered_wanted = 0.99 * filtered_wanted + 0.01 * man_pos;
+    man_pos = int(filtered_wanted);
+    man_speed = man_pos / 4; // -100 ... 100
+  }
   return;
 }
 
@@ -290,7 +281,6 @@ bool data_is_changing()
     no_change_counter++;
   else
     no_change_counter = 0;
-
   prev_left__pos_W = left__pos_W;
   prev_right_pos_W = right_pos_W;
   if (no_change_counter > 500)
@@ -328,16 +318,14 @@ void calc_motors_pwr_to_pos(int left__W, int right_W)
 {
   int left__err = range(left__W, left__min_pos, left__max_pos) - left__pos_A;
   int right_err = range(right_W, right_min_pos, right_max_pos) - right_pos_A;
-  left__percent_power = left__vel_W * KV / 100;
   if (abs(left__err) > DB)
   {
-    left__percent_power += left__err * KP / 10;
+    left__percent_power = left__err * KP / 10;
     left__percent_power = limit(left__percent_power + KS_left * sign(left__percent_power), 100);
   }
-  right_percent_power = right_vel_W * KV / 100;
   if (abs(right_err) > DB)
   {
-    right_percent_power += right_err * KP / 10;
+    right_percent_power = right_err * KP / 10;
     right_percent_power = limit(right_percent_power + KS_right * sign(right_percent_power), 100);
   }
 }
@@ -406,6 +394,7 @@ void operate_blower()
 
 void operate_manual_mode()
 {
+  send_tele();
   LED_set_color(1, 0, 1);
   int speed = dead_band(man_speed, 15);
   if (man_mode_function)
@@ -458,28 +447,37 @@ void operate_demo_mode()
 
 void operate_auto_mode()
 {
-  bool data_is_changing_b = data_is_changing();
-  LED_set_color(0, data_is_changing_b, 1 - data_is_changing_b); // blue on, g on during homing
-  LED_set_timing(100 + 400 * (1 - enable_auto_motion), 200 + 1300 * (1 - enable_auto_motion));
-
-  read_data_from_serial(); // fills left__pos_W and right_pos_W
-
-  if (enable_auto_motion && data_is_changing_b)
+  if (encoer_fault)
   {
-    calc_motors_pwr_to_pos(left__pos_W, right_pos_W);
+    LED_set_color(1, 0, 0);
+    LED_set_timing(500, 500);
+    return;
   }
   else
   {
-    left__percent_power = 0;
-    right_percent_power = 0;
+    bool data_is_changing_b = data_is_changing();
+    LED_set_color(0, data_is_changing_b, 1 - data_is_changing_b); // blue on, g on during homing
+    LED_set_timing(100 + 400 * (1 - enable_auto_motion), 200 + 1600 * (1 - enable_auto_motion));
+
+    read_data_from_serial(); // fills left__pos_W and right_pos_W
+
+    if (enable_auto_motion && data_is_changing_b)
+    {
+      calc_motors_pwr_to_pos(left__pos_W, right_pos_W);
+    }
+    else
+    {
+      left__percent_power = 0;
+      right_percent_power = 0;
+    }
+
+    if (home_in_progress)
+      homing();
+    else
+      time_started_homing = millis();
+
+    air_speed /= 2;
   }
-
-  if (home_in_progress)
-    homing();
-  else
-    time_started_homing = millis();
-
-  air_speed /= 2;
 }
 
 void calc_motors_pwr()
@@ -551,6 +549,4 @@ void loop()
   operate_motors(left__percent_power, right_percent_power);
   operate_blower();
   operate_LEDs();
-  if (man_mode)
-    send_tele();
 }
