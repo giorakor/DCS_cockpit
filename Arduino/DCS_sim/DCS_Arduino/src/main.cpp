@@ -155,18 +155,18 @@ void ParseCommand(int ComPort)
     air_speed_W = (air_speed_W - 512) / 4;                        // 0....90
     air_speed_W = range((air_speed_W * air_speed / 100), 0, 150); //
     break;
-  case 'L':
-    left__vel_factor = limit(min(left__pos_A - left__min_pos, left__max_pos - left__pos_A) * 100 / dist_to_start_slowing, 100); // 0...100
-    left__vel_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-    left__vel_W = dead_band((left__vel_W - 512) / 5 * left__vel_factor / 100, 4); // -100....100
-    left__vel_W = range((left__vel_W * motion_amplitude_scale / 20), -100, 100);  //
-    break;
-  case 'R':
-    right_vel_factor = limit(min(right_pos_A - right_min_pos, right_max_pos - right_pos_A) * 100 / dist_to_start_slowing, 100); // 0...100
-    right_vel_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-    right_vel_W = dead_band((right_vel_W - 512) / 5 * left__vel_factor / 100, 4); // -100....100
-    right_vel_W = range((right_vel_W * motion_amplitude_scale / 20), -100, 100);  //
-    break;
+  // case 'L':
+  //   left__vel_factor = limit(min(left__pos_A - left__min_pos, left__max_pos - left__pos_A) * 100 / dist_to_start_slowing, 100); // 0...100
+  //   left__vel_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
+  //   left__vel_W = dead_band((left__vel_W - 512) / 5 * left__vel_factor / 100, 4); // -100....100
+  //   left__vel_W = range((left__vel_W * motion_amplitude_scale / 20), -100, 100);  //
+  //   break;
+  // case 'R':
+  //   right_vel_factor = limit(min(right_pos_A - right_min_pos, right_max_pos - right_pos_A) * 100 / dist_to_start_slowing, 100); // 0...100
+  //   right_vel_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
+  //   right_vel_W = dead_band((right_vel_W - 512) / 5 * left__vel_factor / 100, 4); // -100....100
+  //   right_vel_W = range((right_vel_W * motion_amplitude_scale / 20), -100, 100);  //
+  //   break;
   case 'S':
     enable_auto_motion = 1;
     home_in_progress = 0;

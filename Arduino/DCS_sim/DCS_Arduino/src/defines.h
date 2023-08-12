@@ -29,11 +29,11 @@
 // calibrations
 #define left__pos_0 512
 #define right_pos_0 490
-#define left__min_pos -400
-#define left__max_pos 400
-#define right_min_pos -400
-#define right_max_pos 400
-#define pos_ofset 20 //
+#define left__min_pos -420
+#define left__max_pos 380
+#define right_min_pos -420
+#define right_max_pos 380
+#define pos_ofset -14 //
 #define dist_to_start_slowing 40
 // motors control
 #define KV 0
