@@ -3,6 +3,7 @@
 #include <defines.h>
 
 float phase;
+float filtered_wanted;
 
 bool LeftLL = 0;
 bool LeftUL = 0;
@@ -272,7 +273,9 @@ void read_Arduino_IO()
   // analogs
   left__pos_A = analogRead(left__pos_pin) - left__pos_0;
   right_pos_A = 1023 - analogRead(right_pos_pin) - right_pos_0;
-  man_pos = limit((analogRead(man_speed_pin) - 465), 460);           // -400 ... 400
+  man_pos = limit((analogRead(man_speed_pin) - 465), 460); // -400 ... 400
+  filtered_wanted = 0.9 * filtered_wanted + 0.1 * man_pos;
+  man_pos = int(filtered_wanted);
   man_speed = man_pos / 4;                                           // -100 ... 100
   air_speed = range((analogRead(air_speed_pin) - 23) / 10, 0, 100);  // 0 ... 100
   motion_amplitude_scale = range(analogRead(scale_pin) / 50, 0, 20); // 0 ... 20

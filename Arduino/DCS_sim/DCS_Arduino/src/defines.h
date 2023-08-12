@@ -29,11 +29,11 @@
 // calibrations
 #define left__pos_0 470
 #define right_pos_0 460
-#define left__min_pos -300
+#define left__min_pos -400
 #define left__max_pos 400
-#define right_min_pos -300
+#define right_min_pos -400
 #define right_max_pos 400
-#define pos_ofset 50 // (max pos - min pos) /2
+#define pos_ofset 20 //
 #define dist_to_start_slowing 40
 // motors control
 #define KV 0
@@ -43,7 +43,7 @@
 #define DB 2 // allowable error
 #define PWM_zero 90
 #define PWM_range_per_side 85
-#define max_pwr 95 // in %
+#define max_pwr 100 // in %
 #define air_zero_pwr 25
 
 // communication
