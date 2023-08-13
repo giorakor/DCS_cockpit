@@ -145,7 +145,7 @@ void ParseCommand(int ComPort)
     break;
   case 'C':
     air_speed_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-    air_speed_W = (air_speed_W - 512) / 4;                        // 0....90
+    air_speed_W = (air_speed_W - 512) / 4;                        // 0....127
     air_speed_W = range((air_speed_W * air_speed / 100), 0, 150); //
     break;
   case 'S':
@@ -218,17 +218,17 @@ void send_tele()
     // Serial.print(LeftUL);
     // Serial.print(RightLL);
     // Serial.print(RightUL);
-    //  Serial.print(" AirP: ");
-    //  Serial.print(air_PWM);
-    //  Serial.print(" spd: ");
-    //   Serial.print(man_speed);
-    //   Serial.print(" air: ");
-    //   Serial.print(air_speed);
-    //   Serial.print(" motion_amplitude_scale: ");
-    //   Serial.print(motion_amplitude_scale);
-    //   Serial.print(" lft, rgt: ");
-    //   Serial.print(man_left);
-    //   Serial.print(man_right);
+    // Serial.print(" AirP: ");
+    // Serial.print(air_PWM);
+    // Serial.print(" spd: ");
+    // Serial.print(man_speed);
+    // Serial.print(" air: ");
+    // Serial.print(air_speed);
+    // Serial.print(" motion_amplitude_scale: ");
+    // Serial.print(motion_amplitude_scale);
+    // Serial.print(" lft, rgt: ");
+    // Serial.print(man_left);
+    // Serial.print(man_right);
     Serial.println(" ");
     last_sent_tele = millis();
   }
@@ -250,7 +250,7 @@ void read_Arduino_IO()
   // analogs
   left__pos_A = analogRead(left__pos_pin);
   right_pos_A = 1023 - analogRead(right_pos_pin);
-  if (left__pos_A < 20 || left__pos_A > 1000 || right_pos_A < 20 || right_pos_A > 1000)
+  if ((left__pos_A < 20 || left__pos_A > 1000 || right_pos_A < 20 || right_pos_A > 1000) && auto_mode)
   {
     encoer_fault = 1;
   }
@@ -447,19 +447,20 @@ void operate_demo_mode()
 
 void operate_auto_mode()
 {
+  bool data_is_changing_b = data_is_changing();
+  read_data_from_serial(); // fills left__pos_W and right_pos_W
   if (encoer_fault)
   {
+    left__percent_power = 0;
+    right_percent_power = 0;
     LED_set_color(1, 0, 0);
     LED_set_timing(500, 500);
     return;
   }
   else
   {
-    bool data_is_changing_b = data_is_changing();
     LED_set_color(0, data_is_changing_b, 1 - data_is_changing_b); // blue on, g on during homing
     LED_set_timing(100 + 400 * (1 - enable_auto_motion), 200 + 1600 * (1 - enable_auto_motion));
-
-    read_data_from_serial(); // fills left__pos_W and right_pos_W
 
     if (enable_auto_motion && data_is_changing_b)
     {
