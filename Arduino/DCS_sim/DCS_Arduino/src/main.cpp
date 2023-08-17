@@ -145,8 +145,8 @@ void ParseCommand(int ComPort)
     break;
   case 'C':
     air_speed_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-    air_speed_W = (air_speed_W - 512) / 4;                        // 0....127
-    air_speed_W = range((air_speed_W * air_speed / 100), 0, 150); //
+    air_speed_W = (air_speed_W - 512) / 5;                        // 0....100
+    air_speed_W = range((air_speed_W * air_speed / 100), 0, 100); //
     break;
   case 'S':
     enable_auto_motion = 1;
@@ -422,7 +422,7 @@ void operate_manual_mode()
 
 void operate_demo_mode()
 {
-  LED_set_color(0, 1, 0);
+  LED_set_color(1, 1, 0);
   if (man_left)
     run_demo = 1;
   if (man_right)
