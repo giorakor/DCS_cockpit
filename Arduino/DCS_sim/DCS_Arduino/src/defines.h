@@ -43,7 +43,7 @@
 #define PWM_zero 90
 #define PWM_range_per_side 85
 #define max_pwr 100 // in %
-#define air_zero_pwr 30
+#define air_zero_pwr 20
 
 // communication
 #define baud_rate 500000

@@ -146,7 +146,7 @@ void ParseCommand(int ComPort)
   case 'C':
     air_speed_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
     air_speed_W = (air_speed_W - 512) / 5;                        // 0....100
-    air_speed_W = range((air_speed_W * air_speed / 100), 0, 100); //
+    air_speed_W = range((air_speed_W * air_speed / 100), 10, 100); //
     break;
   case 'S':
     enable_auto_motion = 1;
@@ -386,8 +386,9 @@ void operate_blower()
     else
       air_speed = 0;
   }
-  if (air_off || millis() < 10000)
+  if (air_off || millis() < 15000)
     air_speed = 0;
+    encoer_fault = 0;
   air_PWM = air_zero_pwr + air_speed;
   air_motor.write(air_PWM);
 }
@@ -418,6 +419,7 @@ void operate_manual_mode()
     calc_motors_pwr_to_pos(0, 0);
   }
   enable_auto_motion = 0;
+  encoer_fault = 0;
 }
 
 void operate_demo_mode()
