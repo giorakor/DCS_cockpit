@@ -145,8 +145,9 @@ void ParseCommand(int ComPort)
     break;
   case 'C':
     air_speed_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-    air_speed_W = (air_speed_W - 512) / 5;                        // 0....100
-    air_speed_W = range((air_speed_W * air_speed / 100), 10, 100); //
+    air_speed_W = (air_speed_W - 512) / 5;           
+    if (air_speed_W > 0) air_speed_W+=13;             // 0....100
+    air_speed_W = range((air_speed_W * air_speed / 100), 0, 120); //
     break;
   case 'S':
     enable_auto_motion = 1;
@@ -382,7 +383,7 @@ void operate_blower()
   if (!air_force_on && !air_off) // mid pos - auto air
   {
     if (enable_auto_motion)
-      air_speed = max(0, air_speed_W - 1);
+      air_speed = max(0, air_speed_W);
     else
       air_speed = 0;
   }
