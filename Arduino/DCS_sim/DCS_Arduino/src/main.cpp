@@ -4,6 +4,7 @@
 
 float phase;
 float filtered_wanted;
+float hue;
 bool encoer_fault = 0;
 bool LeftLL = 0;
 bool LeftUL = 0;
@@ -128,6 +129,7 @@ void reset_wanted()
   right_pos_W = 0;
   air_speed_W = 0;
 }
+
 void ParseCommand(int ComPort)
 {
   CommsTimeout = 0; // reset the comms timeout counter to indicate we are getting packets
@@ -145,8 +147,9 @@ void ParseCommand(int ComPort)
     break;
   case 'C':
     air_speed_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
-    air_speed_W = (air_speed_W - 512) / 5;           
-    if (air_speed_W > 0) air_speed_W+=13;             // 0....100
+    air_speed_W = (air_speed_W - 512) / 5;
+    if (air_speed_W > 0)
+      air_speed_W += 13;                                          // 0....100
     air_speed_W = range((air_speed_W * air_speed / 100), 0, 120); //
     break;
   case 'S':
@@ -347,6 +350,56 @@ void homing()
   }
 }
 
+void change_led(int pin_number, int value)
+{
+  digitalWrite(pin_number, value);
+}
+
+void RGB_LED(int r, int g, int b)
+{
+  analogWrite(LED_red_pin, 255 - r);
+  analogWrite(LED_grn_pin, 255 - g);
+  analogWrite(LED_blu_pin, 255 - b);
+}
+
+void HSV_LED(int H, int S, int V) //  0..360, 0..100, 0..100
+{
+  float s = float(S) / 100;
+  float v = float(V) / 200;
+  float C = s * v;
+  float X = C * (1 - abs(fmod(H / 60.0, 2) - 1));
+  float m = v - C;
+  float r, g, b;
+  if (H >= 0 && H < 60)
+  {
+    r = C, g = X, b = 0;
+  }
+  else if (H >= 60 && H < 120)
+  {
+    r = X, g = C, b = 0;
+  }
+  else if (H >= 120 && H < 180)
+  {
+    r = 0, g = C, b = X;
+  }
+  else if (H >= 180 && H < 240)
+  {
+    r = 0, g = X, b = C;
+  }
+  else if (H >= 240 && H < 300)
+  {
+    r = X, g = 0, b = C;
+  }
+  else
+  {
+    r = C, g = 0, b = X;
+  }
+  int R = (r + m) * 255;
+  int G = (g + m) * 255;
+  int B = (b + m) * 255;
+  RGB_LED(R, G, B);
+}
+
 void set_LEDs(bool r, bool g, bool b)
 {
   digitalWrite(LED_grn_pin, 1 - g);
@@ -389,7 +442,7 @@ void operate_blower()
   }
   if (air_off || millis() < 15000)
     air_speed = 0;
-    encoer_fault = 0;
+  encoer_fault = 0;
   air_PWM = air_zero_pwr + air_speed;
   air_motor.write(air_PWM);
 }
@@ -460,12 +513,12 @@ void operate_auto_mode()
     LED_set_timing(500, 500);
     return;
   }
-  else
+  else if (enable_auto_motion)
   {
-    LED_set_color(0, data_is_changing_b, 1 - data_is_changing_b); // blue on, g on during homing
-    LED_set_timing(100 + 400 * (1 - enable_auto_motion), 200 + 1600 * (1 - enable_auto_motion));
+    LED_set_color(0, data_is_changing_b, 1 - data_is_changing_b); // green while moving, blue when not
+    LED_set_timing(100, 200);
 
-    if (enable_auto_motion && data_is_changing_b)
+    if (data_is_changing_b)
     {
       calc_motors_pwr_to_pos(left__pos_W, right_pos_W);
     }
@@ -481,6 +534,13 @@ void operate_auto_mode()
       time_started_homing = millis();
 
     air_speed /= 2;
+  }
+  else
+  {
+    hue += 0.1;
+    if (hue >= 360)
+      hue = 0;
+    HSV_LED(int(hue), 100, 100);
   }
 }
 
