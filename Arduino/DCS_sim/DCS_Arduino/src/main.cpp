@@ -203,6 +203,18 @@ void read_data_from_serial()
   }
 }
 
+void attach_servos()
+{
+  left__motor.attach(LeftPWM_pin);
+  right_motor.attach(RightPWM_pin);
+}
+
+void detach_servos()
+{
+  left__motor.detach();
+  right_motor.detach();
+}
+
 void send_tele()
 {
   if (millis() - last_sent_tele > 50)
@@ -504,6 +516,9 @@ void operate_demo_mode()
 void operate_auto_mode()
 {
   bool data_is_changing_b = data_is_changing();
+  static bool prev_enable;
+  static bool first_run=1;
+  prev_enable = enable_auto_motion;
   read_data_from_serial(); // fills left__pos_W and right_pos_W
   if (encoer_fault)
   {
@@ -515,6 +530,11 @@ void operate_auto_mode()
   }
   else if (enable_auto_motion)
   {
+    if (!prev_enable && first_run)
+    {
+      attach_servos();
+      first_run = 0;
+    }
     LED_set_color(0, data_is_changing_b, 1 - data_is_changing_b); // green while moving, blue when not
     LED_set_timing(100, 200);
 
@@ -537,10 +557,18 @@ void operate_auto_mode()
   }
   else
   {
-    hue += 0.1;
-    if (hue >= 360)
-      hue = 0;
-    HSV_LED(int(hue), 100, 100);
+    if (first_run)
+    {
+      hue += 0.1;
+      if (hue >= 360)
+        hue = 0;
+      HSV_LED(int(hue), 100, 100);
+    }
+    else
+    {
+      LED_set_color(0, 0, 1);
+      LED_set_timing(300, 1200);
+    }
   }
 }
 
@@ -584,8 +612,6 @@ void setup()
   digitalWrite(LED_blu_pin, HIGH);
   digitalWrite(LED_red_pin, HIGH);
 
-  left__motor.attach(LeftPWM_pin);
-  right_motor.attach(RightPWM_pin);
   air_motor.attach(air_PWM_pin);
   air_motor.write(10);
 
