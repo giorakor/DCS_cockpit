@@ -559,7 +559,7 @@ void operate_auto_mode()
   {
     if (first_run)
     {
-      hue += 0.1;
+      hue += 0.02;
       if (hue >= 360)
         hue = 0;
       HSV_LED(int(hue), 100, 100);
