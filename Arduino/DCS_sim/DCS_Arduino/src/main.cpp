@@ -15,7 +15,7 @@ bool man_left = 0;
 bool run_demo = 0;
 bool auto_mode = 0;
 bool man_mode = 0;
-bool man_mode_function = 0;
+bool mid_switch = 0;
 bool air_force_on = 0;
 bool air_off = 0;
 bool left__PB = 0;
@@ -149,7 +149,7 @@ void ParseCommand(int ComPort)
     air_speed_W = int(RxBuffer[1][ComPort] * 256 + RxBuffer[2][ComPort]);
     air_speed_W = (air_speed_W - 512) / 5;
     if (air_speed_W > 0)
-      air_speed_W += 13;                                          // 0....100
+      air_speed_W += 10;                                          // 0....100
     air_speed_W = range((air_speed_W * air_speed / 100), 0, 120); //
     break;
   case 'S':
@@ -258,10 +258,12 @@ void read_Arduino_IO()
   LeftUL = 1 - digitalRead(LeftUL_pin);
   RightLL = 1 - digitalRead(RightLL_pin);
   RightUL = 1 - digitalRead(RightUL_pin);
+
   auto_mode = 1 - digitalRead(auto_pin);
   man_mode = 1 - digitalRead(man_pin);
   air_force_on = 1 - digitalRead(air_force_on_pin);
   air_off = 1 - digitalRead(air_off_pin);
+  mid_switch = 1 - digitalRead(man_mode_pin);
 
   // analogs
   left__pos_A = analogRead(left__pos_pin);
@@ -282,7 +284,6 @@ void read_Arduino_IO()
     left__PB = 1 - digitalRead(left__PB_pin);
     man_left = 1 - digitalRead(man_left__pin);
     man_right = 1 - digitalRead(man_right_pin);
-    man_mode_function = 1 - digitalRead(man_mode_pin);
     man_pos = limit((analogRead(man_speed_pin) - 465), 460); // -400 ... 400
     filtered_wanted = 0.99 * filtered_wanted + 0.01 * man_pos;
     man_pos = int(filtered_wanted);
@@ -464,7 +465,7 @@ void operate_manual_mode()
   send_tele();
   LED_set_color(1, 0, 1);
   int speed = dead_band(man_speed, 15);
-  if (man_mode_function)
+  if (mid_switch)
   {
     LED_set_timing(200, 300);
     if (man_left)
@@ -517,7 +518,7 @@ void operate_auto_mode()
 {
   bool data_is_changing_b = data_is_changing();
   static bool prev_enable;
-  static bool first_run=1;
+  static bool first_run = 1;
   prev_enable = enable_auto_motion;
   read_data_from_serial(); // fills left__pos_W and right_pos_W
   if (encoer_fault)
@@ -528,6 +529,13 @@ void operate_auto_mode()
     LED_set_timing(500, 500);
     return;
   }
+  else if(!mid_switch){
+    left__percent_power = 0;
+    right_percent_power = 0;
+    LED_set_color(0, 1, 1);
+    LED_set_timing(500, 500);
+    air_speed /= 2;
+  }
   else if (enable_auto_motion)
   {
     if (!prev_enable && first_run)
@@ -536,7 +544,7 @@ void operate_auto_mode()
       first_run = 0;
     }
     LED_set_color(0, data_is_changing_b, 1 - data_is_changing_b); // green while moving, blue when not
-    LED_set_timing(100, 200);
+    LED_set_timing(50, 250);
 
     if (data_is_changing_b)
     {
@@ -552,7 +560,6 @@ void operate_auto_mode()
       homing();
     else
       time_started_homing = millis();
-
     air_speed /= 2;
   }
   else
