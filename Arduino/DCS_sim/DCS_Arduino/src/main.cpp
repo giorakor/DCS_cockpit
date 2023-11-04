@@ -552,8 +552,8 @@ void operate_auto_mode()
   }
   else
   {
-    led_phase += 0.001;
-    if (led_phase >= 3.1415)
+    led_phase += 0.002;
+    if (led_phase >= 6.283)
       led_phase = 0;
     LED_set_color_rgb(0, sin(led_phase) * 10.0 + 10.0, 0);
     LED_set_timing(5000, 0);
