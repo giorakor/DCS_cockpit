@@ -4,7 +4,7 @@
 
 float phase;
 float filtered_wanted;
-float hue;
+float led_phase;
 bool encoer_fault = 0;
 bool LeftLL = 0;
 bool LeftUL = 0;
@@ -56,9 +56,9 @@ unsigned long millis_on = 200;
 unsigned long millis_off = 800;
 
 bool led_on = 0;
-bool grn_LED_on = 0;
-bool blu_LED_on = 0;
-bool red_LED_on = 0;
+byte grn_LED_pwr = 0;
+byte blu_LED_pwr = 0;
+byte red_LED_pwr = 0;
 
 Servo left__motor;
 Servo right_motor;
@@ -102,25 +102,12 @@ int dead_band(int val, int db)
   return val;
 }
 
-void LED_set_color(bool r, bool g, bool b)
-{
-  grn_LED_on = g;
-  blu_LED_on = b;
-  red_LED_on = r;
-}
-
 void wait_for_loop_t()
 {
   while ((millis() - last_run) < 1)
     ;
   last_run = millis();
   return;
-}
-
-void LED_set_timing(int time_on, int time_off)
-{
-  millis_on = time_on;
-  millis_off = time_off;
 }
 
 void reset_wanted()
@@ -203,18 +190,6 @@ void read_data_from_serial()
   }
 }
 
-void attach_servos()
-{
-  left__motor.attach(LeftPWM_pin);
-  right_motor.attach(RightPWM_pin);
-}
-
-void detach_servos()
-{
-  left__motor.detach();
-  right_motor.detach();
-}
-
 void send_tele()
 {
   if (millis() - last_sent_tele > 50)
@@ -229,7 +204,9 @@ void send_tele()
     Serial.print(left__percent_power);
     Serial.print(" R%: ");
     Serial.print(right_percent_power);
-    Serial.print(" lft LL UL, rgt LL UL: ");
+    Serial.print(" mn: ");
+    Serial.print(man_pos);
+    // Serial.print(" lft LL UL, rgt LL UL: ");
     // Serial.print(LeftLL);
     // Serial.print(LeftUL);
     // Serial.print(RightLL);
@@ -363,19 +340,20 @@ void homing()
   }
 }
 
-void change_led(int pin_number, int value)
+void LED_set_timing(int time_on, int time_off)
 {
-  digitalWrite(pin_number, value);
+  millis_on = time_on;
+  millis_off = time_off;
 }
 
-void RGB_LED(int r, int g, int b)
+void LED_set_color_rgb(byte r, byte g, byte b)
 {
-  analogWrite(LED_red_pin, 255 - r);
-  analogWrite(LED_grn_pin, 255 - g);
-  analogWrite(LED_blu_pin, 255 - b);
+  red_LED_pwr = r;
+  grn_LED_pwr = g;
+  blu_LED_pwr = b;
 }
 
-void HSV_LED(int H, int S, int V) //  0..360, 0..100, 0..100
+void LED_set_color_hsv(int H, int S, int V) //  0..360, 0..100, 0..100
 {
   float s = float(S) / 100;
   float v = float(V) / 200;
@@ -407,17 +385,41 @@ void HSV_LED(int H, int S, int V) //  0..360, 0..100, 0..100
   {
     r = C, g = 0, b = X;
   }
-  int R = (r + m) * 255;
-  int G = (g + m) * 255;
-  int B = (b + m) * 255;
-  RGB_LED(R, G, B);
+
+  grn_LED_pwr = 20 * (r + m);
+  blu_LED_pwr = 20 * (g + m);
+  red_LED_pwr = 20 * (b + m);
 }
 
-void set_LEDs(bool r, bool g, bool b)
+void set_LEDS_direct(bool r, bool g, bool b)
 {
+  digitalWrite(LED_red_pin, 1 - r);
   digitalWrite(LED_grn_pin, 1 - g);
   digitalWrite(LED_blu_pin, 1 - b);
-  digitalWrite(LED_red_pin, 1 - r);
+}
+
+void set_LEDs(bool on)
+{
+  static unsigned long last_led_cycle_start_time;
+
+  byte time_in_cycle = (millis() - last_led_cycle_start_time);
+
+  if (on)
+  {
+    digitalWrite(LED_red_pin, (time_in_cycle > red_LED_pwr) );
+    digitalWrite(LED_grn_pin, (time_in_cycle > grn_LED_pwr) );
+    digitalWrite(LED_blu_pin, (time_in_cycle > blu_LED_pwr) );
+  }
+  else
+  {
+    digitalWrite(LED_red_pin, 1);
+    digitalWrite(LED_grn_pin, 1);
+    digitalWrite(LED_blu_pin, 1);
+  }
+  if (time_in_cycle > 20)
+  {
+    last_led_cycle_start_time = millis();
+  }
 }
 
 void operate_LEDs()
@@ -428,7 +430,6 @@ void operate_LEDs()
   {
     if (millis() - time_turn_on > millis_on)
     {
-      set_LEDs(0, 0, 0);
       time_turn_off = millis();
       led_on = 0;
     }
@@ -437,11 +438,11 @@ void operate_LEDs()
   {
     if (millis() - time_turn_off > millis_off)
     {
-      set_LEDs(red_LED_on, grn_LED_on, blu_LED_on);
       time_turn_on = millis();
       led_on = 1;
     }
   }
+  set_LEDs(led_on);
 }
 
 void operate_blower()
@@ -463,7 +464,7 @@ void operate_blower()
 void operate_manual_mode()
 {
   send_tele();
-  LED_set_color(1, 0, 1);
+  LED_set_color_rgb(20, 0, 20);
   int speed = dead_band(man_speed, 15);
   if (mid_switch)
   {
@@ -491,7 +492,7 @@ void operate_manual_mode()
 
 void operate_demo_mode()
 {
-  LED_set_color(1, 1, 0);
+  LED_set_color_rgb(20, 20, 0);
   if (man_left)
     run_demo = 1;
   if (man_right)
@@ -517,33 +518,27 @@ void operate_demo_mode()
 void operate_auto_mode()
 {
   bool data_is_changing_b = data_is_changing();
-  static bool prev_enable;
-  static bool first_run = 1;
-  prev_enable = enable_auto_motion;
+
   read_data_from_serial(); // fills left__pos_W and right_pos_W
   if (encoer_fault)
   {
     left__percent_power = 0;
     right_percent_power = 0;
-    LED_set_color(1, 0, 0);
+    LED_set_color_rgb(20, 0, 0);
     LED_set_timing(500, 500);
     return;
   }
-  else if(!mid_switch){
+  else if (!mid_switch)
+  {
     left__percent_power = 0;
     right_percent_power = 0;
-    LED_set_color(0, 1, 1);
+    LED_set_color_rgb(0, 20, 20);
     LED_set_timing(500, 500);
     air_speed /= 2;
   }
   else if (enable_auto_motion)
   {
-    if (!prev_enable && first_run)
-    {
-      attach_servos();
-      first_run = 0;
-    }
-    LED_set_color(0, data_is_changing_b, 1 - data_is_changing_b); // green while moving, blue when not
+    LED_set_color_rgb(0, 20 * data_is_changing_b, 20 - 20 * data_is_changing_b); // green while moving, blue when not
     LED_set_timing(50, 250);
 
     if (data_is_changing_b)
@@ -564,18 +559,11 @@ void operate_auto_mode()
   }
   else
   {
-    if (first_run)
-    {
-      hue += 0.02;
-      if (hue >= 360)
-        hue = 0;
-      HSV_LED(int(hue), 100, 100);
-    }
-    else
-    {
-      LED_set_color(0, 0, 1);
-      LED_set_timing(300, 1200);
-    }
+    led_phase += 0.001;
+    if (led_phase >= 3.1415)
+      led_phase = 0;
+    LED_set_color_rgb(0,sin(led_phase)*10.0+10.0,0);
+    LED_set_timing(5000, 0);
   }
 }
 
@@ -619,23 +607,25 @@ void setup()
   digitalWrite(LED_blu_pin, HIGH);
   digitalWrite(LED_red_pin, HIGH);
 
+  left__motor.attach(LeftPWM_pin);
+  right_motor.attach(RightPWM_pin);
   air_motor.attach(air_PWM_pin);
   air_motor.write(10);
 
-  set_LEDs(1, 0, 0);
+  set_LEDS_direct(1, 0, 0);
   digitalWrite(LED_auto_pin, HIGH);
   digitalWrite(LED_man_pin, LOW);
-  delay(600);
+  delay(300);
 
-  set_LEDs(0, 1, 0);
+  set_LEDS_direct(0, 1, 0);
   digitalWrite(LED_auto_pin, LOW);
   digitalWrite(LED_man_pin, HIGH);
-  delay(600);
+  delay(300);
 
-  set_LEDs(0, 0, 1);
+  set_LEDS_direct(0, 0, 1);
   digitalWrite(LED_auto_pin, LOW);
   digitalWrite(LED_man_pin, LOW);
-  delay(600);
+  delay(300);
 }
 
 void loop()
