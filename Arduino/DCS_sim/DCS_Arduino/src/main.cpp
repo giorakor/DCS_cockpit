@@ -2,7 +2,6 @@
 #include <Servo.h>
 #include <defines.h>
 
-float phase;
 float filtered_wanted;
 float led_phase;
 bool encoer_fault = 0;
@@ -12,7 +11,6 @@ bool RightLL = 0;
 bool RightUL = 0;
 bool man_right = 0;
 bool man_left = 0;
-bool run_demo = 0;
 bool auto_mode = 0;
 bool man_mode = 0;
 bool mid_switch = 0;
@@ -29,8 +27,6 @@ int left__pos_A = 0;
 int right_pos_A = 0;
 int man_pos = 0;
 int air_PWM = 0;
-int demo_left__wpos = 0;
-int demo_right_wpos = 0;
 int in_home_counter = 0;
 int left__percent_power = 0;
 int right_percent_power = 0;
@@ -256,7 +252,7 @@ void read_Arduino_IO()
   motion_amplitude_scale = range(analogRead(scale_pin) / 50, 0, 20); // 0 ... 20
 
   // manual mode inputs
-  if (man_mode)
+  if (!auto_mode)
   {
     left__PB = 1 - digitalRead(left__PB_pin);
     man_left = 1 - digitalRead(man_left__pin);
@@ -406,9 +402,9 @@ void set_LEDs(bool on)
 
   if (on)
   {
-    digitalWrite(LED_red_pin, (time_in_cycle > red_LED_pwr) );
-    digitalWrite(LED_grn_pin, (time_in_cycle > grn_LED_pwr) );
-    digitalWrite(LED_blu_pin, (time_in_cycle > blu_LED_pwr) );
+    digitalWrite(LED_red_pin, (time_in_cycle > red_LED_pwr));
+    digitalWrite(LED_grn_pin, (time_in_cycle > grn_LED_pwr));
+    digitalWrite(LED_blu_pin, (time_in_cycle > blu_LED_pwr));
   }
   else
   {
@@ -492,25 +488,22 @@ void operate_manual_mode()
 
 void operate_demo_mode()
 {
-  LED_set_color_rgb(20, 20, 0);
-  if (man_left)
-    run_demo = 1;
-  if (man_right)
-    run_demo = 0;
-  if (run_demo)
+  LED_set_color_rgb(20, 15, 0);
+  int speed = dead_band(man_speed, 15);
+  if (man_left || man_right)
   {
-    LED_set_timing(200, 300);
-    demo_left__wpos = int(sin(phase) * motion_amplitude_scale * 13);
-    demo_right_wpos = int(sin(phase * 1.2) * motion_amplitude_scale * 13);
-    phase += 0.00002 * (man_speed + 100);
-    calc_motors_pwr_to_pos(demo_left__wpos, demo_right_wpos);
-    air_speed = int((sin(phase / 4) + 1.0) * 20);
+    LED_set_timing(200, 100);
+    left__percent_power = speed;
+    right_percent_power = speed;
   }
-  else // home
+  else if (left__PB) // home
+  {
+    LED_set_timing(200, 100);
+    calc_motors_pwr_to_pos(0, 0);
+  }
+  else
   {
     LED_set_timing(300, 700);
-    calc_motors_pwr_to_pos(0, 0);
-    air_speed = 0;
   }
   enable_auto_motion = 0;
 }
@@ -562,7 +555,7 @@ void operate_auto_mode()
     led_phase += 0.001;
     if (led_phase >= 3.1415)
       led_phase = 0;
-    LED_set_color_rgb(0,sin(led_phase)*10.0+10.0,0);
+    LED_set_color_rgb(0, sin(led_phase) * 10.0 + 10.0, 0);
     LED_set_timing(5000, 0);
   }
 }
