@@ -521,7 +521,7 @@ void operate_auto_mode()
     LED_set_timing(500, 500);
     return;
   }
-  else if (!mid_switch)
+  else if (!mid_switch) //  motion is off
   {
     left__percent_power = 0;
     right_percent_power = 0;

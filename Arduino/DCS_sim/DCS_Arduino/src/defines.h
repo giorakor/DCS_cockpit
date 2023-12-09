@@ -39,7 +39,7 @@
 #define KS_left 10
 #define KS_right 10
 #define KP 7 // X10  5 means 0.5
-#define DB 2 // allowable error
+#define DB 1 // allowable error
 #define PWM_zero 90
 #define PWM_range_per_side 85
 #define max_pwr 100 // in %
